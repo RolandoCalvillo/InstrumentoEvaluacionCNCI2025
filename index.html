@@ -32,13 +32,7 @@
             <p id="loginSubtitle" class="text-gray-600">Ingresa tus credenciales para continuar</p>
         </div>
 
-        <!-- Firebase Connection Status -->
-        <div id="firebaseStatus" class="hidden mb-4 p-3 rounded-lg text-sm">
-            <div class="flex items-center">
-                <div id="statusIcon" class="w-3 h-3 rounded-full mr-2"></div>
-                <span id="statusText">Verificando conexión...</span>
-            </div>
-        </div>
+
 
         <!-- Login Form -->
         <form id="loginForm" class="space-y-6">
@@ -190,7 +184,7 @@
                         <h3 class="text-lg font-semibold text-gray-800">Sincronización Firebase</h3>
                         <p class="text-sm text-gray-600">Gestiona la sincronización de datos con la base de datos</p>
                     </div>
-                    <div class="flex space-x-3">
+                    <div class="flex flex-wrap gap-2">
                         <button onclick="initializeSampleData()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
                             🔄 Inicializar Datos
                         </button>
@@ -198,8 +192,15 @@
                             ☁️ Sincronizar Ahora
                         </button>
                         <button onclick="exportAllData()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                            📊 Exportar Todo
+                            📊 Exportar JSON
                         </button>
+                        <button onclick="exportAllDataCSV()" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            📄 Exportar CSV
+                        </button>
+                        <label for="importCSVFile" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                            📁 Importar CSV
+                        </label>
+                        <input type="file" id="importCSVFile" accept=".csv" class="hidden" onchange="importCSVData(event)">
                     </div>
                 </div>
             </div>
@@ -259,9 +260,15 @@
                             <p class="text-sm text-gray-600" id="supervisorName">Supervisor</p>
                         </div>
                     </div>
-                    <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                        Cerrar Sesión
-                    </button>
+                    <div class="flex items-center space-x-3">
+                        <div id="supervisorFirebaseStatus" class="flex items-center text-sm">
+                            <div id="supervisorStatusIcon" class="w-2 h-2 rounded-full mr-2"></div>
+                            <span id="supervisorStatusText">Firebase</span>
+                        </div>
+                        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                            Cerrar Sesión
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -311,8 +318,15 @@
                             🗑️ Vaciar Tabla
                         </button>
                         <button onclick="exportAsesoresData()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                            📊 Exportar Datos
+                            📊 Exportar JSON
                         </button>
+                        <button onclick="exportAsesoresCSV()" class="w-full bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            📄 Exportar CSV
+                        </button>
+                        <label for="importAsesoresCSV" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer text-center block">
+                            📁 Importar CSV
+                        </label>
+                        <input type="file" id="importAsesoresCSV" accept=".csv" class="hidden" onchange="importAsesoresCSV(event)">
                         <button onclick="syncWithFirebase()" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
                             🔄 Sincronizar Firebase
                         </button>
@@ -365,9 +379,15 @@
                             </select>
                         </div>
                     </div>
-                    <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                        Cerrar Sesión
-                    </button>
+                    <div class="flex items-center space-x-3">
+                        <div id="supervisorFirebaseStatus" class="flex items-center text-sm">
+                            <div id="supervisorStatusIcon" class="w-2 h-2 rounded-full mr-2"></div>
+                            <span id="supervisorStatusText">Firebase</span>
+                        </div>
+                        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                            Cerrar Sesión
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1375,18 +1395,16 @@
 
             const statusClass = statusClasses[status] || statusClasses.offline;
 
-            // Update login screen status
-            if (elements.firebaseStatus) {
-                elements.firebaseStatus.className = `mb-4 p-3 rounded-lg text-sm border ${statusClass.bg}`;
-                elements.firebaseStatus.classList.remove('hidden');
-                elements.statusIcon.className = `w-3 h-3 rounded-full mr-2 ${statusClass.icon}`;
-                elements.statusText.textContent = message;
-            }
-
-            // Update admin panel status
+            // Update Super Admin panel status
             if (elements.adminStatusIcon && elements.adminStatusText) {
                 elements.adminStatusIcon.className = `w-2 h-2 rounded-full mr-2 ${statusClass.icon}`;
                 elements.adminStatusText.textContent = status === 'connected' ? 'Conectado' : 'Desconectado';
+            }
+
+            // Update Supervisor panel status
+            if (elements.supervisorStatusIcon && elements.supervisorStatusText) {
+                elements.supervisorStatusIcon.className = `w-2 h-2 rounded-full mr-2 ${statusClass.icon}`;
+                elements.supervisorStatusText.textContent = status === 'connected' ? 'Conectado' : 'Desconectado';
             }
         }
 
@@ -1614,6 +1632,201 @@
             } catch (error) {
                 console.error('Error exporting data:', error);
                 showError('Error al exportar datos: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Export all data as CSV (Super Admin)
+        async function exportAllDataCSV() {
+            try {
+                showLoading(true);
+
+                // Prepare CSV data for users
+                const csvData = [];
+                const headers = [
+                    'Usuario', 'Nombre', 'Rol', 'Email', 'Teléfono', 'Departamento', 
+                    'Estado', 'Supervisor', 'Módulo Actual', 'Fecha Creación', 'Último Login'
+                ];
+                csvData.push(headers);
+
+                // Add user data (excluding admin)
+                Object.entries(systemData.users).forEach(([username, userData]) => {
+                    if (username === 'admin') return;
+                    
+                    const row = [
+                        username,
+                        userData.name || '',
+                        userData.role || '',
+                        userData.email || '',
+                        userData.phone || '',
+                        userData.department || '',
+                        userData.status || 'active',
+                        userData.supervisor || '',
+                        userData.currentModule || '',
+                        userData.createdAt || '',
+                        userData.lastLogin || ''
+                    ];
+                    csvData.push(row);
+                });
+
+                // Convert to CSV string
+                const csvContent = csvData.map(row => 
+                    row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(',')
+                ).join('\n');
+
+                // Create and download CSV file
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `cnci_usuarios_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                showSuccess('Datos CSV exportados correctamente');
+
+            } catch (error) {
+                console.error('Error exporting CSV:', error);
+                showError('Error al exportar CSV: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Import CSV data (Super Admin)
+        async function importCSVData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                showLoading(true);
+
+                const text = await file.text();
+                const lines = text.split('\n').filter(line => line.trim());
+                
+                if (lines.length < 2) {
+                    showError('El archivo CSV debe contener al menos una fila de encabezados y una fila de datos');
+                    return;
+                }
+
+                const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+                const expectedHeaders = ['Usuario', 'Nombre', 'Rol', 'Email', 'Teléfono', 'Departamento', 'Estado', 'Supervisor', 'Módulo Actual'];
+                
+                // Validate headers
+                const hasRequiredHeaders = expectedHeaders.slice(0, 3).every(header => 
+                    headers.some(h => h.toLowerCase().includes(header.toLowerCase()))
+                );
+
+                if (!hasRequiredHeaders) {
+                    showError('El archivo CSV debe contener al menos las columnas: Usuario, Nombre, Rol');
+                    return;
+                }
+
+                let importedCount = 0;
+                let updatedCount = 0;
+                let errorCount = 0;
+
+                // Process data rows
+                for (let i = 1; i < lines.length; i++) {
+                    try {
+                        const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+                        
+                        if (values.length < 3 || !values[0] || !values[1] || !values[2]) {
+                            errorCount++;
+                            continue;
+                        }
+
+                        const username = values[0];
+                        const name = values[1];
+                        const role = values[2].toLowerCase();
+
+                        // Skip admin user
+                        if (username === 'admin') continue;
+
+                        // Validate role
+                        if (!['supervisor', 'asesor'].includes(role)) {
+                            errorCount++;
+                            continue;
+                        }
+
+                        const userData = {
+                            name: name,
+                            role: role,
+                            email: values[3] || `${username}@cnci.com`,
+                            phone: values[4] || '',
+                            department: values[5] || 'General',
+                            status: values[6] || 'active',
+                            supervisor: values[7] || null,
+                            currentModule: values[8] || 'M1',
+                            password: systemData.users[username]?.password || 'temp123',
+                            createdAt: systemData.users[username]?.createdAt || new Date().toISOString().split('T')[0],
+                            lastLogin: systemData.users[username]?.lastLogin || null,
+                            syncVersion: (systemData.users[username]?.syncVersion || 0) + 1
+                        };
+
+                        // Add role-specific data
+                        if (role === 'supervisor') {
+                            userData.asesores = systemData.users[username]?.asesores || {};
+                            userData.permissions = ['manage_asesores', 'edit_titles', 'export_data'];
+                        } else if (role === 'asesor') {
+                            userData.moduleData = systemData.users[username]?.moduleData || {};
+                            // Initialize module data if empty
+                            Object.keys(MODULES).forEach(moduleId => {
+                                if (!userData.moduleData[moduleId]) {
+                                    userData.moduleData[moduleId] = {
+                                        categories: [],
+                                        badges: [],
+                                        performance: {}
+                                    };
+                                }
+                            });
+                        }
+
+                        // Update or create user
+                        if (systemData.users[username]) {
+                            // Update existing user
+                            Object.assign(systemData.users[username], userData);
+                            updatedCount++;
+                        } else {
+                            // Create new user
+                            systemData.users[username] = userData;
+                            importedCount++;
+                        }
+
+                        // Update Firebase if connected
+                        if (isFirebaseConnected) {
+                            await db.collection('users').doc(username).set(userData, { merge: true });
+                        }
+
+                    } catch (rowError) {
+                        console.error(`Error processing row ${i}:`, rowError);
+                        errorCount++;
+                    }
+                }
+
+                // Clear file input
+                event.target.value = '';
+
+                // Refresh UI
+                if (currentUser && currentUser.role === 'super_admin') {
+                    loadAllUsers();
+                    updateSystemStats();
+                }
+
+                // Show results
+                const message = `Importación completada: ${importedCount} nuevos usuarios, ${updatedCount} actualizados`;
+                if (errorCount > 0) {
+                    showError(`${message}. ${errorCount} errores encontrados.`);
+                } else {
+                    showSuccess(message);
+                }
+
+            } catch (error) {
+                console.error('Error importing CSV:', error);
+                showError('Error al importar CSV: ' + error.message);
             } finally {
                 showLoading(false);
             }
@@ -2584,6 +2797,304 @@
             showSuccess('Datos exportados correctamente');
         }
 
+        // Export asesores data as CSV (Supervisor)
+        function exportAsesoresCSV() {
+            const moduleAsesores = currentSupervisor.asesores && currentSupervisor.asesores[currentModule] 
+                ? currentSupervisor.asesores[currentModule] 
+                : [];
+            
+            if (moduleAsesores.length === 0) {
+                showError('No hay datos para exportar');
+                return;
+            }
+
+            try {
+                // Prepare CSV data
+                const csvData = [];
+                
+                // Create headers
+                const baseHeaders = [
+                    'Usuario', 'Nombre', 'Email', 'Teléfono', 'Departamento', 'Módulo', 'Promedio General'
+                ];
+                
+                // Add category headers
+                const moduleConfig = MODULES[currentModule];
+                const categoryHeaders = [];
+                moduleConfig.categories.forEach(category => {
+                    categoryHeaders.push(`${category.name} - Puntuación`);
+                    category.criteria.forEach(criterion => {
+                        categoryHeaders.push(`${category.name} - ${criterion.name}`);
+                    });
+                    categoryHeaders.push(`${category.name} - Comentario Supervisión`);
+                    categoryHeaders.push(`${category.name} - Comentario Calidad`);
+                });
+
+                const headers = [...baseHeaders, ...categoryHeaders, 'Insignias', 'Fecha Creación', 'Última Actualización'];
+                csvData.push(headers);
+
+                // Add asesor data
+                moduleAsesores.forEach(asesor => {
+                    const generalScore = calculateGeneralScore(asesor.categories);
+                    
+                    const baseRow = [
+                        asesor.username,
+                        asesor.name,
+                        asesor.email || '',
+                        asesor.phone || '',
+                        asesor.department || '',
+                        asesor.module,
+                        generalScore.toFixed(1)
+                    ];
+
+                    // Add category data
+                    const categoryData = [];
+                    moduleConfig.categories.forEach(categoryConfig => {
+                        const category = asesor.categories.find(c => c.id === categoryConfig.id);
+                        if (category) {
+                            categoryData.push(category.score.toFixed(1));
+                            category.criteria.forEach(criterion => {
+                                categoryData.push(criterion.score.toFixed(1));
+                            });
+                            categoryData.push(category.supervisionComment || '');
+                            categoryData.push(category.qualityComment || '');
+                        } else {
+                            // Empty category
+                            categoryData.push('0.0');
+                            categoryConfig.criteria.forEach(() => {
+                                categoryData.push('0.0');
+                            });
+                            categoryData.push('');
+                            categoryData.push('');
+                        }
+                    });
+
+                    const badges = asesor.badges ? asesor.badges.map(b => b.title).join('; ') : '';
+                    const additionalData = [
+                        badges,
+                        asesor.createdAt || '',
+                        asesor.lastUpdate || ''
+                    ];
+
+                    const row = [...baseRow, ...categoryData, ...additionalData];
+                    csvData.push(row);
+                });
+
+                // Convert to CSV string
+                const csvContent = csvData.map(row => 
+                    row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(',')
+                ).join('\n');
+
+                // Create and download CSV file
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `asesores_${currentModule}_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                showSuccess('Datos CSV exportados correctamente');
+
+            } catch (error) {
+                console.error('Error exporting CSV:', error);
+                showError('Error al exportar CSV: ' + error.message);
+            }
+        }
+
+        // Import asesores CSV (Supervisor)
+        async function importAsesoresCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                showLoading(true);
+
+                const text = await file.text();
+                const lines = text.split('\n').filter(line => line.trim());
+                
+                if (lines.length < 2) {
+                    showError('El archivo CSV debe contener al menos una fila de encabezados y una fila de datos');
+                    return;
+                }
+
+                const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+                
+                // Validate required headers
+                const requiredHeaders = ['Usuario', 'Nombre'];
+                const hasRequiredHeaders = requiredHeaders.every(header => 
+                    headers.some(h => h.toLowerCase().includes(header.toLowerCase()))
+                );
+
+                if (!hasRequiredHeaders) {
+                    showError('El archivo CSV debe contener al menos las columnas: Usuario, Nombre');
+                    return;
+                }
+
+                // Initialize asesores array if it doesn't exist
+                if (!currentSupervisor.asesores) {
+                    currentSupervisor.asesores = {};
+                }
+                if (!currentSupervisor.asesores[currentModule]) {
+                    currentSupervisor.asesores[currentModule] = [];
+                }
+
+                let importedCount = 0;
+                let updatedCount = 0;
+                let errorCount = 0;
+
+                // Get module configuration
+                const moduleConfig = MODULES[currentModule];
+
+                // Process data rows
+                for (let i = 1; i < lines.length; i++) {
+                    try {
+                        const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+                        
+                        if (values.length < 2 || !values[0] || !values[1]) {
+                            errorCount++;
+                            continue;
+                        }
+
+                        const username = values[0];
+                        const name = values[1];
+
+                        // Check if asesor already exists
+                        const existingAsesorIndex = currentSupervisor.asesores[currentModule].findIndex(a => a.username === username);
+                        
+                        // Create categories based on module configuration
+                        const categories = moduleConfig.categories.map(catConfig => ({
+                            id: catConfig.id,
+                            name: catConfig.name,
+                            score: 0,
+                            color: catConfig.color,
+                            criteria: catConfig.criteria.map(criterion => ({
+                                name: criterion.name,
+                                score: 0,
+                                weight: criterion.weight
+                            })),
+                            supervisionComment: 'Importado desde CSV.',
+                            qualityComment: 'Pendiente de evaluación.',
+                            lastEvaluation: null,
+                            evaluator: currentSupervisor.username
+                        }));
+
+                        const asesorData = {
+                            id: existingAsesorIndex >= 0 ? currentSupervisor.asesores[currentModule][existingAsesorIndex].id : generateId(),
+                            username: username,
+                            name: name,
+                            password: existingAsesorIndex >= 0 ? currentSupervisor.asesores[currentModule][existingAsesorIndex].password : 'temp123',
+                            module: currentModule,
+                            email: values[2] || `${username}@cnci.com`,
+                            phone: values[3] || '',
+                            department: values[4] || 'General',
+                            supervisor: currentSupervisor.username,
+                            categories: categories,
+                            badges: existingAsesorIndex >= 0 ? currentSupervisor.asesores[currentModule][existingAsesorIndex].badges : [],
+                            performance: {
+                                callsHandled: 0,
+                                averageCallTime: '0:00',
+                                customerSatisfaction: 0,
+                                goalsAchieved: 0,
+                                attendanceRate: 100
+                            },
+                            createdAt: existingAsesorIndex >= 0 ? currentSupervisor.asesores[currentModule][existingAsesorIndex].createdAt : new Date().toISOString().split('T')[0],
+                            lastUpdate: new Date().toISOString()
+                        };
+
+                        if (existingAsesorIndex >= 0) {
+                            // Update existing asesor
+                            currentSupervisor.asesores[currentModule][existingAsesorIndex] = asesorData;
+                            updatedCount++;
+                        } else {
+                            // Add new asesor
+                            currentSupervisor.asesores[currentModule].push(asesorData);
+                            importedCount++;
+                        }
+
+                        // Also create/update standalone user
+                        systemData.users[username] = {
+                            password: asesorData.password,
+                            role: 'asesor',
+                            name: name,
+                            email: asesorData.email,
+                            phone: asesorData.phone,
+                            department: asesorData.department,
+                            supervisor: currentSupervisor.username,
+                            status: 'active',
+                            createdAt: asesorData.createdAt,
+                            lastLogin: null,
+                            currentModule: currentModule,
+                            moduleData: {
+                                [currentModule]: {
+                                    categories: categories,
+                                    badges: asesorData.badges,
+                                    performance: asesorData.performance
+                                }
+                            }
+                        };
+
+                        // Initialize other modules with empty data
+                        Object.keys(MODULES).forEach(moduleId => {
+                            if (moduleId !== currentModule) {
+                                systemData.users[username].moduleData[moduleId] = {
+                                    categories: [],
+                                    badges: [],
+                                    performance: {}
+                                };
+                            }
+                        });
+
+                    } catch (rowError) {
+                        console.error(`Error processing row ${i}:`, rowError);
+                        errorCount++;
+                    }
+                }
+
+                // Update Firebase if connected
+                if (isFirebaseConnected) {
+                    try {
+                        // Update supervisor data
+                        await db.collection('users').doc(currentSupervisor.username).update({
+                            asesores: currentSupervisor.asesores,
+                            lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+
+                        // Update standalone users
+                        const batch = db.batch();
+                        currentSupervisor.asesores[currentModule].forEach(asesor => {
+                            const userRef = db.collection('users').doc(asesor.username);
+                            batch.set(userRef, systemData.users[asesor.username], { merge: true });
+                        });
+                        await batch.commit();
+                    } catch (error) {
+                        console.error('Error updating Firebase:', error);
+                    }
+                }
+
+                // Clear file input
+                event.target.value = '';
+
+                // Refresh table
+                loadAsesoresTable();
+
+                // Show results
+                const message = `Importación completada: ${importedCount} nuevos asesores, ${updatedCount} actualizados`;
+                if (errorCount > 0) {
+                    showError(`${message}. ${errorCount} errores encontrados.`);
+                } else {
+                    showSuccess(message);
+                }
+
+            } catch (error) {
+                console.error('Error importing CSV:', error);
+                showError('Error al importar CSV: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
         // Asesor details modal functions
         function openAsesorDetailsModal(asesorId) {
             editingAsesorId = asesorId;
@@ -3042,12 +3553,12 @@
                 asesoresTableBody: document.getElementById('asesoresTableBody'),
 
                 // Firebase status elements
-                firebaseStatus: document.getElementById('firebaseStatus'),
-                statusIcon: document.getElementById('statusIcon'),
-                statusText: document.getElementById('statusText'),
                 adminFirebaseStatus: document.getElementById('adminFirebaseStatus'),
                 adminStatusIcon: document.getElementById('adminStatusIcon'),
-                adminStatusText: document.getElementById('adminStatusText')
+                adminStatusText: document.getElementById('adminStatusText'),
+                supervisorFirebaseStatus: document.getElementById('supervisorFirebaseStatus'),
+                supervisorStatusIcon: document.getElementById('supervisorStatusIcon'),
+                supervisorStatusText: document.getElementById('supervisorStatusText')
             };
             
             console.log('Elements found:', {
@@ -3207,5 +3718,5 @@
         // Start application when DOM is loaded
         document.addEventListener('DOMContentLoaded', initializeApp);
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97a121c0106338ef',t:'MTc1NzAyNzEyOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97a141a3f0e214af',t:'MTc1NzAyODQzNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
