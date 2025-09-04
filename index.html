@@ -1,0 +1,2956 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CNCI - Sistema de Evaluación</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'cnci-blue': '#2a6aff',
+                        'cnci-orange': '#ff8500',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-cnci-blue to-blue-600 flex items-center justify-center p-4">
+    <!-- Login Container -->
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 transform transition-all duration-300 hover:scale-105">
+        <!-- Logo -->
+        <div class="text-center mb-8">
+            <img src="https://i.ibb.co/m5QcyKWg/Logo-CNCI.png" alt="Logo CNCI" class="mx-auto h-20 w-auto mb-4" onerror="this.src=''; this.alt='Logo CNCI'; this.innerHTML='<div class=\'bg-cnci-blue text-white rounded-full w-20 h-20 flex items-center justify-center text-2xl font-bold mx-auto\'>CNCI</div>';">
+            <h1 id="loginTitle" class="text-2xl font-bold text-gray-800 mb-2">Sistema de Evaluación</h1>
+            <p id="loginSubtitle" class="text-gray-600">Ingresa tus credenciales para continuar</p>
+        </div>
+
+        <!-- Firebase Connection Status -->
+        <div id="firebaseStatus" class="hidden mb-4 p-3 rounded-lg text-sm">
+            <div class="flex items-center">
+                <div id="statusIcon" class="w-3 h-3 rounded-full mr-2"></div>
+                <span id="statusText">Verificando conexión...</span>
+            </div>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="space-y-6">
+            <!-- Usuario Field -->
+            <div class="space-y-2">
+                <label for="usuario" class="block text-sm font-semibold text-gray-700">Usuario</label>
+                <input 
+                    type="text" 
+                    id="usuario" 
+                    name="usuario" 
+                    required
+                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-cnci-blue focus:outline-none transition-colors duration-200 text-gray-800"
+                    placeholder="Ingresa tu usuario"
+                >
+            </div>
+
+            <!-- Contraseña Field -->
+            <div class="space-y-2">
+                <label for="password" class="block text-sm font-semibold text-gray-700">Contraseña</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    required
+                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-cnci-blue focus:outline-none transition-colors duration-200 text-gray-800"
+                    placeholder="Ingresa tu contraseña"
+                >
+            </div>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg text-sm">
+                <span id="errorText"></span>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="loadingSpinner" class="hidden text-center">
+                <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-cnci-blue"></div>
+                <span class="ml-2 text-gray-600">Validando credenciales...</span>
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+                type="submit" 
+                id="loginButton"
+                class="w-full bg-cnci-orange hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-orange-300"
+            >
+                Consultar mi Evaluación
+            </button>
+        </form>
+
+        <!-- Footer -->
+        <div class="mt-8 text-center text-sm text-gray-500">
+            <p>© 2024 CNCI - Sistema de Evaluación</p>
+        </div>
+    </div>
+
+    <!-- Super Admin View -->
+    <div id="superAdminView" class="hidden min-h-screen bg-gray-50">
+        <!-- Header -->
+        <div class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 space-y-2 sm:space-y-0">
+                    <div class="flex items-center space-x-4">
+                        <img src="https://i.ibb.co/m5QcyKWg/Logo-CNCI.png" alt="Logo CNCI" class="h-10 w-auto" onerror="this.style.display='none';">
+                        <div>
+                            <h1 class="text-xl font-bold text-cnci-blue">Panel Super Administrador</h1>
+                            <p class="text-sm text-gray-600">Gestión completa del sistema</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <div id="adminFirebaseStatus" class="flex items-center text-sm">
+                            <div id="adminStatusIcon" class="w-2 h-2 rounded-full mr-2"></div>
+                            <span id="adminStatusText">Firebase</span>
+                        </div>
+                        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                            Cerrar Sesión
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <!-- Dashboard Stats -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Total Supervisores</p>
+                            <p class="text-2xl font-semibold text-gray-900" id="totalSupervisors">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-green-100 text-green-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Total Asesores</p>
+                            <p class="text-2xl font-semibold text-gray-900" id="totalAsesores">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Módulos Activos</p>
+                            <p class="text-2xl font-semibold text-gray-900">12</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-orange-100 text-orange-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Evaluaciones</p>
+                            <p class="text-2xl font-semibold text-gray-900" id="totalEvaluations">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Firebase Sync Controls -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800">Sincronización Firebase</h3>
+                        <p class="text-sm text-gray-600">Gestiona la sincronización de datos con la base de datos</p>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button onclick="initializeSampleData()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            🔄 Inicializar Datos
+                        </button>
+                        <button onclick="syncWithFirebase()" class="bg-cnci-blue hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            ☁️ Sincronizar Ahora
+                        </button>
+                        <button onclick="exportAllData()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            📊 Exportar Todo
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Management Section -->
+            <div class="bg-white rounded-lg shadow-sm">
+                <div class="p-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-2 sm:space-y-0">
+                        <h2 class="text-xl font-semibold text-gray-800">Gestión de Usuarios</h2>
+                        <button onclick="openCreateUserModal()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            ➕ Crear Usuario
+                        </button>
+                    </div>
+                    
+                    <!-- Filter Controls -->
+                    <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                        <select id="roleFilter" onchange="filterUsers()" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:border-cnci-blue focus:outline-none">
+                            <option value="">Todos los roles</option>
+                            <option value="supervisor">Supervisores</option>
+                            <option value="asesor">Asesores</option>
+                        </select>
+                        <input type="text" id="searchUsers" onkeyup="filterUsers()" placeholder="Buscar usuarios..." class="border border-gray-300 rounded-md px-3 py-2 text-sm flex-1 min-w-0 focus:border-cnci-blue focus:outline-none">
+                    </div>
+
+                    <!-- Users Table -->
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Users will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Simplified Supervisor View -->
+    <div id="supervisorView" class="hidden min-h-screen bg-gray-50">
+        <!-- Header -->
+        <div class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 space-y-2 sm:space-y-0">
+                    <div class="flex items-center space-x-4">
+                        <img src="https://i.ibb.co/m5QcyKWg/Logo-CNCI.png" alt="Logo CNCI" class="h-10 w-auto" onerror="this.style.display='none';">
+                        <div>
+                            <h1 class="text-xl font-bold text-cnci-blue">Panel Supervisor</h1>
+                            <p class="text-sm text-gray-600" id="supervisorName">Supervisor</p>
+                        </div>
+                    </div>
+                    <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                        Cerrar Sesión
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <!-- Module Selector -->
+            <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                    <label for="supervisorModuleSelector" class="text-sm font-medium text-gray-700">Módulo:</label>
+                    <select id="supervisorModuleSelector" onchange="loadModuleData()" class="border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none">
+                        <!-- Modules will be populated dynamically -->
+                    </select>
+                    <div class="text-sm text-gray-500" id="moduleDescription">
+                        Selecciona un módulo para ver su descripción
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control Panel -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- Title Editor -->
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Edición de Títulos</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Título Principal</label>
+                            <input type="text" id="mainTitle" value="Sistema de Evaluación" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Subtítulo</label>
+                            <input type="text" id="subtitle" value="Ingresa tus credenciales para continuar" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none">
+                        </div>
+                        <button onclick="updateLoginTitles()" class="w-full bg-cnci-blue hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            Actualizar Títulos
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Acciones Rápidas</h3>
+                    <div class="space-y-3">
+                        <button onclick="openAddAsesorModal()" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            ➕ Añadir Asesor
+                        </button>
+                        <button onclick="openClearTableModal()" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            🗑️ Vaciar Tabla
+                        </button>
+                        <button onclick="exportAsesoresData()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            📊 Exportar Datos
+                        </button>
+                        <button onclick="syncWithFirebase()" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            🔄 Sincronizar Firebase
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Asesores Management Table -->
+            <div class="bg-white rounded-lg shadow-sm">
+                <div class="p-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 space-y-2 sm:space-y-0">
+                        <h2 class="text-xl font-semibold text-gray-800">Gestión de Asesores</h2>
+                        <div class="text-sm text-gray-500" id="currentModuleInfo">
+                            Módulo: No seleccionado
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contraseña</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Promedio</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="asesoresTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Asesores will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asesor View -->
+    <div id="asesorView" class="hidden min-h-screen bg-gray-50">
+        <!-- Header with Module Selector -->
+        <div class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 space-y-2 sm:space-y-0">
+                    <div class="flex items-center space-x-4">
+                        <img src="https://i.ibb.co/m5QcyKWg/Logo-CNCI.png" alt="Logo CNCI" class="h-10 w-auto" onerror="this.style.display='none';">
+                        <div>
+                            <h1 class="text-xl font-bold text-cnci-blue">Dashboard Asesor</h1>
+                            <select id="moduleSelector" onchange="loadAsesorModuleData()" class="mt-1 text-sm border border-gray-300 rounded-md px-3 py-1 focus:border-cnci-blue focus:outline-none">
+                                <!-- Modules will be populated dynamically -->
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                        Cerrar Sesión
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Welcome Message -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                <h2 class="text-lg font-semibold text-gray-800">¡Bienvenido(a), <span id="asesorName">Asesor</span>!</h2>
+                <p class="text-gray-600 text-sm">Aquí puedes consultar tu evaluación y seguimiento de desempeño.</p>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="bg-white rounded-lg shadow-sm mb-6">
+                <div class="border-b border-gray-200">
+                    <nav class="flex flex-wrap space-x-2 sm:space-x-8 px-6" aria-label="Tabs">
+                        <button onclick="switchTab('resumen')" id="tab-resumen" class="tab-button active border-b-2 border-cnci-blue text-cnci-blue py-4 px-1 text-sm font-medium">
+                            Resumen General
+                        </button>
+                        <button onclick="switchTab('tendencias')" id="tab-tendencias" class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">
+                            Tendencias
+                        </button>
+                        <button onclick="switchTab('insignias')" id="tab-insignias" class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">
+                            Insignias
+                        </button>
+                        <button onclick="switchTab('plan')" id="tab-plan" class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">
+                            Plan de Trabajo
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Tab Content -->
+                <div class="p-6">
+                    <!-- Resumen General Tab -->
+                    <div id="content-resumen" class="tab-content">
+                        <!-- Progress Bars Section -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            <div class="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-6">
+                                <h3 class="text-lg font-semibold text-green-800 mb-4">Calificación General</h3>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm text-green-700">Promedio</span>
+                                    <span class="text-lg font-bold text-green-800" id="generalScore">0.0</span>
+                                </div>
+                                <div class="w-full bg-green-200 rounded-full h-3">
+                                    <div id="generalProgressBar" class="bg-green-600 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <div class="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-6">
+                                <h3 class="text-lg font-semibold text-blue-800 mb-4">Meta de Llamadas</h3>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm text-blue-700">Completado</span>
+                                    <span class="text-lg font-bold text-blue-800">85%</span>
+                                </div>
+                                <div class="w-full bg-blue-200 rounded-full h-3">
+                                    <div class="bg-blue-600 h-3 rounded-full transition-all duration-500" style="width: 85%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Categories Section -->
+                        <h3 class="text-xl font-semibold text-gray-800 mb-6">Categorías y Criterios de Evaluación</h3>
+                        <div id="categoriesContainer" class="space-y-6">
+                            <!-- Categories will be loaded here dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Other tabs content -->
+                    <div id="content-tendencias" class="tab-content hidden">
+                        <div class="text-center py-12">
+                            <div class="text-6xl mb-4">📈</div>
+                            <h3 class="text-lg font-semibold text-gray-600 mb-2">Análisis de Tendencias</h3>
+                            <p class="text-gray-500">Esta sección mostrará el progreso histórico y tendencias de desempeño.</p>
+                        </div>
+                    </div>
+
+                    <div id="content-insignias" class="tab-content hidden">
+                        <div class="space-y-6">
+                            <div>
+                                <h3 class="text-xl font-semibold text-gray-800 mb-4">Insignias Obtenidas</h3>
+                                <div id="earnedBadges" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <!-- Badges will be loaded here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="content-plan" class="tab-content hidden">
+                        <div class="space-y-6">
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                                <h3 class="text-lg font-semibold text-blue-800 mb-4">Instrucciones para el Plan de Trabajo</h3>
+                                <p class="text-blue-700 text-sm leading-relaxed mb-4">
+                                    A partir de los resultados de tu evaluación, identifica de 3 a 4 áreas de oportunidad y describe acciones concretas que puedas implementar para mejorarlas.
+                                </p>
+                            </div>
+                            
+                            <div class="text-center">
+                                <button onclick="window.open('https://docs.google.com/document/create', '_blank')" class="bg-cnci-orange hover:bg-orange-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 transform hover:scale-105">
+                                    Crear mi Plan de Trabajo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create User Modal (Super Admin) -->
+    <div id="createUserModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Crear Nuevo Usuario</h3>
+                <form id="createUserForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Nombre</label>
+                        <input type="text" id="newUserName" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Usuario</label>
+                        <input type="text" id="newUserUsername" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Contraseña</label>
+                        <input type="password" id="newUserPassword" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Rol</label>
+                        <select id="newUserRole" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none" required>
+                            <option value="">Seleccionar rol</option>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="asesor">Asesor</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button type="button" onclick="closeCreateUserModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg transition-colors">Cancelar</button>
+                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors">Crear Usuario</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal (Super Admin) -->
+    <div id="editUserModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Editar Usuario</h3>
+                <form id="editUserForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Nombre</label>
+                        <input type="text" id="editUserName" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Usuario</label>
+                        <input type="text" id="editUserUsername" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Rol</label>
+                        <select id="editUserRole" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none" required>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="asesor">Asesor</option>
+                        </select>
+                    </div>
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="resetPassword" class="mr-2">
+                            <span class="text-sm text-yellow-800">Restablecer contraseña</span>
+                        </label>
+                        <input type="password" id="newPassword" class="mt-2 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm hidden" placeholder="Nueva contraseña">
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button type="button" onclick="closeEditUserModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg transition-colors">Cancelar</button>
+                        <button type="submit" class="bg-cnci-blue hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Asesor Modal (Supervisor) -->
+    <div id="addAsesorModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Añadir Nuevo Asesor</h3>
+                <form id="addAsesorForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Nombre</label>
+                        <input type="text" id="newAsesorName" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Usuario</label>
+                        <input type="text" id="newAsesorUsername" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Contraseña</label>
+                        <input type="password" id="newAsesorPassword" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none" required>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button type="button" onclick="closeAddAsesorModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg transition-colors">Cancelar</button>
+                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors">Añadir Asesor</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clear Table Modal -->
+    <div id="clearTableModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                    <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Confirmar Eliminación</h3>
+                <p class="text-sm text-gray-500 mb-6">¿Estás seguro de que deseas eliminar todos los datos de los asesores? Esta acción no se puede deshacer.</p>
+                <div class="flex justify-center space-x-3">
+                    <button onclick="closeClearTableModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg transition-colors">Cancelar</button>
+                    <button onclick="clearAllAsesores()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors">Eliminar Todo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asesor Details Modal -->
+    <div id="asesorDetailsModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-10 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-medium text-gray-900">Detalles del Asesor</h3>
+                    <button onclick="closeAsesorDetailsModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div id="asesorDetailsContent" class="space-y-6">
+                    <!-- Content will be populated dynamically -->
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button onclick="closeAsesorDetailsModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg transition-colors">Cancelar</button>
+                    <button onclick="saveAsesorDetails()" class="bg-cnci-blue hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * CNCI Evaluation System - Version 5.0 with Firebase Integration
+         * 
+         * Features:
+         * - Production Firebase configuration
+         * - Structured data synchronization
+         * - Sample data initialization
+         * - Real-time connection monitoring
+         * - Offline persistence support
+         * - Comprehensive error handling
+         */
+
+        // Firebase Configuration - Production Ready
+        const firebaseConfig = {
+            apiKey: "AIzaSyBMwQp-SobGp0GUDY6tt900lI7aPnSx1Cs",
+            authDomain: "instrumentoevaluacioncnci2025.firebaseapp.com",
+            projectId: "instrumentoevaluacioncnci2025",
+            storageBucket: "instrumentoevaluacioncnci2025.firebasestorage.app",
+            messagingSenderId: "143665328342",
+            appId: "1:143665328342:web:e2505ddf46661541ea5977"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        // Enable offline persistence
+        db.enablePersistence().catch((err) => {
+            if (err.code == 'failed-precondition') {
+                console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+            } else if (err.code == 'unimplemented') {
+                console.warn('The current browser does not support all of the features required to enable persistence');
+            }
+        });
+
+        // Static Module Configuration (M1-M12)
+        const MODULES = {
+            'M1': {
+                id: 'M1',
+                name: 'Módulo 1',
+                title: 'Fundamentos de Atención al Cliente',
+                description: 'Principios básicos de servicio al cliente y comunicación efectiva',
+                categories: [
+                    {
+                        id: 'communication',
+                        name: 'Comunicación',
+                        color: 'blue',
+                        criteria: [
+                            { name: 'Claridad en la comunicación', weight: 0.3 },
+                            { name: 'Escucha activa', weight: 0.3 },
+                            { name: 'Empatía', weight: 0.4 }
+                        ]
+                    },
+                    {
+                        id: 'service_quality',
+                        name: 'Calidad de Servicio',
+                        color: 'green',
+                        criteria: [
+                            { name: 'Tiempo de respuesta', weight: 0.4 },
+                            { name: 'Resolución efectiva', weight: 0.6 }
+                        ]
+                    }
+                ]
+            },
+            'M2': {
+                id: 'M2',
+                name: 'Módulo 2',
+                title: 'Técnicas de Ventas',
+                description: 'Estrategias y técnicas para el proceso de ventas efectivo',
+                categories: [
+                    {
+                        id: 'sales_technique',
+                        name: 'Técnica de Ventas',
+                        color: 'purple',
+                        criteria: [
+                            { name: 'Identificación de necesidades', weight: 0.3 },
+                            { name: 'Presentación del producto', weight: 0.3 },
+                            { name: 'Manejo de objeciones', weight: 0.4 }
+                        ]
+                    },
+                    {
+                        id: 'closing',
+                        name: 'Cierre de Ventas',
+                        color: 'orange',
+                        criteria: [
+                            { name: 'Técnicas de cierre', weight: 0.5 },
+                            { name: 'Seguimiento post-venta', weight: 0.5 }
+                        ]
+                    }
+                ]
+            },
+            'M3': {
+                id: 'M3',
+                name: 'Módulo 3',
+                title: 'Gestión de Relaciones',
+                description: 'Construcción y mantenimiento de relaciones con clientes',
+                categories: [
+                    {
+                        id: 'relationship_building',
+                        name: 'Construcción de Relaciones',
+                        color: 'green',
+                        criteria: [
+                            { name: 'Rapport con el cliente', weight: 0.4 },
+                            { name: 'Confianza y credibilidad', weight: 0.6 }
+                        ]
+                    }
+                ]
+            },
+            'M4': {
+                id: 'M4',
+                name: 'Módulo 4',
+                title: 'Resolución de Conflictos',
+                description: 'Manejo efectivo de situaciones difíciles y quejas',
+                categories: [
+                    {
+                        id: 'conflict_resolution',
+                        name: 'Resolución de Conflictos',
+                        color: 'red',
+                        criteria: [
+                            { name: 'Manejo de quejas', weight: 0.4 },
+                            { name: 'Negociación', weight: 0.3 },
+                            { name: 'Soluciones creativas', weight: 0.3 }
+                        ]
+                    }
+                ]
+            },
+            'M5': {
+                id: 'M5',
+                name: 'Módulo 5',
+                title: 'Conocimiento del Producto',
+                description: 'Dominio completo de productos y servicios ofrecidos',
+                categories: [
+                    {
+                        id: 'product_knowledge',
+                        name: 'Conocimiento del Producto',
+                        color: 'blue',
+                        criteria: [
+                            { name: 'Características técnicas', weight: 0.4 },
+                            { name: 'Beneficios y ventajas', weight: 0.3 },
+                            { name: 'Comparación competitiva', weight: 0.3 }
+                        ]
+                    }
+                ]
+            },
+            'M6': {
+                id: 'M6',
+                name: 'Módulo 6',
+                title: 'Gestión del Tiempo',
+                description: 'Optimización del tiempo y productividad en el trabajo',
+                categories: [
+                    {
+                        id: 'time_management',
+                        name: 'Gestión del Tiempo',
+                        color: 'purple',
+                        criteria: [
+                            { name: 'Planificación diaria', weight: 0.3 },
+                            { name: 'Priorización de tareas', weight: 0.4 },
+                            { name: 'Cumplimiento de horarios', weight: 0.3 }
+                        ]
+                    }
+                ]
+            },
+            'M7': {
+                id: 'M7',
+                name: 'Módulo 7',
+                title: 'Trabajo en Equipo',
+                description: 'Colaboración efectiva y sinergia grupal',
+                categories: [
+                    {
+                        id: 'teamwork',
+                        name: 'Trabajo en Equipo',
+                        color: 'green',
+                        criteria: [
+                            { name: 'Colaboración', weight: 0.4 },
+                            { name: 'Comunicación interna', weight: 0.3 },
+                            { name: 'Apoyo a compañeros', weight: 0.3 }
+                        ]
+                    }
+                ]
+            },
+            'M8': {
+                id: 'M8',
+                name: 'Módulo 8',
+                title: 'Liderazgo',
+                description: 'Desarrollo de habilidades de liderazgo y motivación',
+                categories: [
+                    {
+                        id: 'leadership',
+                        name: 'Liderazgo',
+                        color: 'orange',
+                        criteria: [
+                            { name: 'Toma de decisiones', weight: 0.4 },
+                            { name: 'Motivación del equipo', weight: 0.3 },
+                            { name: 'Delegación efectiva', weight: 0.3 }
+                        ]
+                    }
+                ]
+            },
+            'M9': {
+                id: 'M9',
+                name: 'Módulo 9',
+                title: 'Innovación y Creatividad',
+                description: 'Desarrollo del pensamiento creativo y soluciones innovadoras',
+                categories: [
+                    {
+                        id: 'innovation',
+                        name: 'Innovación',
+                        color: 'purple',
+                        criteria: [
+                            { name: 'Pensamiento creativo', weight: 0.4 },
+                            { name: 'Propuestas de mejora', weight: 0.3 },
+                            { name: 'Adaptabilidad', weight: 0.3 }
+                        ]
+                    }
+                ]
+            },
+            'M10': {
+                id: 'M10',
+                name: 'Módulo 10',
+                title: 'Ética Profesional',
+                description: 'Principios éticos y responsabilidad profesional',
+                categories: [
+                    {
+                        id: 'ethics',
+                        name: 'Ética Profesional',
+                        color: 'blue',
+                        criteria: [
+                            { name: 'Integridad', weight: 0.4 },
+                            { name: 'Confidencialidad', weight: 0.3 },
+                            { name: 'Responsabilidad', weight: 0.3 }
+                        ]
+                    }
+                ]
+            },
+            'M11': {
+                id: 'M11',
+                name: 'Módulo 11',
+                title: 'Tecnología y Herramientas',
+                description: 'Dominio de herramientas tecnológicas y sistemas',
+                categories: [
+                    {
+                        id: 'technology',
+                        name: 'Competencia Tecnológica',
+                        color: 'green',
+                        criteria: [
+                            { name: 'Manejo de sistemas', weight: 0.4 },
+                            { name: 'Herramientas digitales', weight: 0.3 },
+                            { name: 'Adaptación tecnológica', weight: 0.3 }
+                        ]
+                    }
+                ]
+            },
+            'M12': {
+                id: 'M12',
+                name: 'Módulo 12',
+                title: 'Evaluación Integral',
+                description: 'Evaluación comprehensiva de todas las competencias',
+                categories: [
+                    {
+                        id: 'comprehensive',
+                        name: 'Evaluación Integral',
+                        color: 'red',
+                        criteria: [
+                            { name: 'Desempeño general', weight: 0.5 },
+                            { name: 'Mejora continua', weight: 0.5 }
+                        ]
+                    }
+                ]
+            }
+        };
+
+        // Global State Management
+        let currentUser = null;
+        let currentSupervisor = null;
+        let currentModule = 'M1';
+        let editingUserId = null;
+        let editingAsesorId = null;
+        let isFirebaseConnected = false;
+        let firebaseRetryCount = 0;
+        const MAX_RETRY_ATTEMPTS = 3;
+
+        // Sample Data Structure - Will be synced to Firebase
+        const sampleData = {
+            // System configuration
+            config: {
+                loginTitle: "Sistema de Evaluación CNCI",
+                loginSubtitle: "Ingresa tus credenciales para continuar",
+                version: "5.0",
+                lastUpdate: new Date().toISOString(),
+                modules: MODULES
+            },
+            
+            // Users database (excluding admin for security)
+            users: {
+                // Sample supervisor
+                'supervisor1': {
+                    password: 'super123',
+                    role: 'supervisor',
+                    name: 'Juan Supervisor',
+                    email: 'supervisor@cnci.com',
+                    status: 'active',
+                    createdAt: '2024-01-10',
+                    lastLogin: null,
+                    permissions: ['manage_asesores', 'edit_titles', 'export_data'],
+                    asesores: {
+                        'M1': [
+                            {
+                                id: 'asesor1_m1',
+                                username: 'maria.garcia',
+                                name: 'María García',
+                                password: 'asesor123',
+                                module: 'M1',
+                                email: 'maria.garcia@cnci.com',
+                                phone: '+52 55 1234 5678',
+                                department: 'Atención al Cliente',
+                                supervisor: 'supervisor1',
+                                categories: [
+                                    {
+                                        id: 'communication',
+                                        name: 'Comunicación',
+                                        score: 8.5,
+                                        color: 'blue',
+                                        criteria: [
+                                            { name: 'Claridad en la comunicación', score: 9.0, weight: 0.3 },
+                                            { name: 'Escucha activa', score: 8.0, weight: 0.3 },
+                                            { name: 'Empatía', score: 8.5, weight: 0.4 }
+                                        ],
+                                        supervisionComment: 'Excelente desempeño en comunicación. Demuestra gran claridad al explicar procedimientos.',
+                                        qualityComment: 'Muy buena calidad en la interacción con clientes. Mantiene un tono profesional.',
+                                        lastEvaluation: '2024-01-15',
+                                        evaluator: 'supervisor1'
+                                    },
+                                    {
+                                        id: 'service_quality',
+                                        name: 'Calidad de Servicio',
+                                        score: 7.8,
+                                        color: 'green',
+                                        criteria: [
+                                            { name: 'Tiempo de respuesta', score: 8.5, weight: 0.4 },
+                                            { name: 'Resolución efectiva', score: 7.2, weight: 0.6 }
+                                        ],
+                                        supervisionComment: 'Buen manejo de tiempos. Área de oportunidad en resolución compleja.',
+                                        qualityComment: 'Calidad consistente en el servicio. Seguir trabajando en casos complejos.',
+                                        lastEvaluation: '2024-01-15',
+                                        evaluator: 'supervisor1'
+                                    }
+                                ],
+                                badges: [
+                                    { 
+                                        emoji: '🏆', 
+                                        title: 'Maestro(a) de Comunicación', 
+                                        description: 'Reconocimiento por excelente comunicación con clientes.',
+                                        dateEarned: '2024-01-20',
+                                        criteria: 'Puntuación superior a 8.0 en comunicación'
+                                    },
+                                    { 
+                                        emoji: '⭐', 
+                                        title: 'Estrella del Mes', 
+                                        description: 'Otorgada por superar las metas mensuales.',
+                                        dateEarned: '2024-01-31',
+                                        criteria: 'Cumplimiento del 100% de objetivos mensuales'
+                                    }
+                                ],
+                                performance: {
+                                    callsHandled: 245,
+                                    averageCallTime: '4:32',
+                                    customerSatisfaction: 4.6,
+                                    goalsAchieved: 92,
+                                    attendanceRate: 98
+                                },
+                                createdAt: '2024-01-10',
+                                lastUpdate: '2024-01-20'
+                            },
+                            {
+                                id: 'asesor2_m1',
+                                username: 'carlos.lopez',
+                                name: 'Carlos López',
+                                password: 'carlos123',
+                                module: 'M1',
+                                email: 'carlos.lopez@cnci.com',
+                                phone: '+52 55 9876 5432',
+                                department: 'Atención al Cliente',
+                                supervisor: 'supervisor1',
+                                categories: [
+                                    {
+                                        id: 'communication',
+                                        name: 'Comunicación',
+                                        score: 7.2,
+                                        color: 'blue',
+                                        criteria: [
+                                            { name: 'Claridad en la comunicación', score: 7.5, weight: 0.3 },
+                                            { name: 'Escucha activa', score: 6.8, weight: 0.3 },
+                                            { name: 'Empatía', score: 7.3, weight: 0.4 }
+                                        ],
+                                        supervisionComment: 'Buen desempeño general. Trabajar en escucha activa.',
+                                        qualityComment: 'Calidad aceptable. Mejorar la paciencia con clientes difíciles.',
+                                        lastEvaluation: '2024-01-15',
+                                        evaluator: 'supervisor1'
+                                    },
+                                    {
+                                        id: 'service_quality',
+                                        name: 'Calidad de Servicio',
+                                        score: 6.9,
+                                        color: 'green',
+                                        criteria: [
+                                            { name: 'Tiempo de respuesta', score: 7.2, weight: 0.4 },
+                                            { name: 'Resolución efectiva', score: 6.7, weight: 0.6 }
+                                        ],
+                                        supervisionComment: 'Tiempos adecuados. Mejorar efectividad en resolución.',
+                                        qualityComment: 'Servicio estándar. Oportunidad de crecimiento en resolución.',
+                                        lastEvaluation: '2024-01-15',
+                                        evaluator: 'supervisor1'
+                                    }
+                                ],
+                                badges: [
+                                    { 
+                                        emoji: '📈', 
+                                        title: 'En Crecimiento', 
+                                        description: 'Reconocimiento por mejora continua.',
+                                        dateEarned: '2024-01-25',
+                                        criteria: 'Mejora sostenida en evaluaciones'
+                                    }
+                                ],
+                                performance: {
+                                    callsHandled: 198,
+                                    averageCallTime: '5:15',
+                                    customerSatisfaction: 4.1,
+                                    goalsAchieved: 78,
+                                    attendanceRate: 95
+                                },
+                                createdAt: '2024-01-10',
+                                lastUpdate: '2024-01-20'
+                            }
+                        ],
+                        'M2': [
+                            {
+                                id: 'asesor3_m2',
+                                username: 'ana.martinez',
+                                name: 'Ana Martínez',
+                                password: 'ana123',
+                                module: 'M2',
+                                email: 'ana.martinez@cnci.com',
+                                phone: '+52 55 5555 1234',
+                                department: 'Ventas',
+                                supervisor: 'supervisor1',
+                                categories: [
+                                    {
+                                        id: 'sales_technique',
+                                        name: 'Técnica de Ventas',
+                                        score: 9.1,
+                                        color: 'purple',
+                                        criteria: [
+                                            { name: 'Identificación de necesidades', score: 9.2, weight: 0.3 },
+                                            { name: 'Presentación del producto', score: 8.8, weight: 0.3 },
+                                            { name: 'Manejo de objeciones', score: 9.3, weight: 0.4 }
+                                        ],
+                                        supervisionComment: 'Excelente técnica de ventas. Manejo excepcional de objeciones.',
+                                        qualityComment: 'Calidad superior en presentaciones. Muy profesional.',
+                                        lastEvaluation: '2024-01-18',
+                                        evaluator: 'supervisor1'
+                                    },
+                                    {
+                                        id: 'closing',
+                                        name: 'Cierre de Ventas',
+                                        score: 8.7,
+                                        color: 'orange',
+                                        criteria: [
+                                            { name: 'Técnicas de cierre', score: 8.9, weight: 0.5 },
+                                            { name: 'Seguimiento post-venta', score: 8.5, weight: 0.5 }
+                                        ],
+                                        supervisionComment: 'Muy buenas técnicas de cierre. Excelente seguimiento.',
+                                        qualityComment: 'Cierre efectivo y seguimiento consistente.',
+                                        lastEvaluation: '2024-01-18',
+                                        evaluator: 'supervisor1'
+                                    }
+                                ],
+                                badges: [
+                                    { 
+                                        emoji: '💎', 
+                                        title: 'Vendedor Diamante', 
+                                        description: 'Reconocimiento por excelencia en ventas.',
+                                        dateEarned: '2024-01-22',
+                                        criteria: 'Puntuación superior a 9.0 en técnicas de ventas'
+                                    },
+                                    { 
+                                        emoji: '🎯', 
+                                        title: 'Meta Alcanzada', 
+                                        description: 'Cumplimiento del 120% de la meta mensual.',
+                                        dateEarned: '2024-01-31',
+                                        criteria: 'Superar meta mensual en 20%'
+                                    }
+                                ],
+                                performance: {
+                                    salesMade: 45,
+                                    conversionRate: 68,
+                                    averageTicket: 2850,
+                                    goalsAchieved: 120,
+                                    attendanceRate: 100
+                                },
+                                createdAt: '2024-01-12',
+                                lastUpdate: '2024-01-22'
+                            }
+                        ]
+                    }
+                },
+                
+                // Sample standalone asesor
+                'maria.garcia': {
+                    password: 'asesor123',
+                    role: 'asesor',
+                    name: 'María García',
+                    email: 'maria.garcia@cnci.com',
+                    phone: '+52 55 1234 5678',
+                    department: 'Atención al Cliente',
+                    supervisor: 'supervisor1',
+                    status: 'active',
+                    createdAt: '2024-01-15',
+                    lastLogin: null,
+                    currentModule: 'M1',
+                    moduleData: {
+                        'M1': {
+                            categories: [
+                                {
+                                    id: 'communication',
+                                    name: 'Comunicación',
+                                    score: 8.5,
+                                    color: 'blue',
+                                    criteria: [
+                                        { name: 'Claridad en la comunicación', score: 9.0, weight: 0.3 },
+                                        { name: 'Escucha activa', score: 8.0, weight: 0.3 },
+                                        { name: 'Empatía', score: 8.5, weight: 0.4 }
+                                    ],
+                                    supervisionComment: 'Excelente desempeño en comunicación. Demuestra gran claridad al explicar procedimientos.',
+                                    qualityComment: 'Muy buena calidad en la interacción con clientes. Mantiene un tono profesional.',
+                                    lastEvaluation: '2024-01-15',
+                                    evaluator: 'supervisor1'
+                                },
+                                {
+                                    id: 'service_quality',
+                                    name: 'Calidad de Servicio',
+                                    score: 7.8,
+                                    color: 'green',
+                                    criteria: [
+                                        { name: 'Tiempo de respuesta', score: 8.5, weight: 0.4 },
+                                        { name: 'Resolución efectiva', score: 7.2, weight: 0.6 }
+                                    ],
+                                    supervisionComment: 'Buen manejo de tiempos. Área de oportunidad en resolución compleja.',
+                                    qualityComment: 'Calidad consistente en el servicio. Seguir trabajando en casos complejos.',
+                                    lastEvaluation: '2024-01-15',
+                                    evaluator: 'supervisor1'
+                                }
+                            ],
+                            badges: [
+                                { 
+                                    emoji: '🏆', 
+                                    title: 'Maestro(a) de Comunicación', 
+                                    description: 'Reconocimiento por excelente comunicación con clientes.',
+                                    dateEarned: '2024-01-20',
+                                    criteria: 'Puntuación superior a 8.0 en comunicación'
+                                }
+                            ],
+                            performance: {
+                                callsHandled: 245,
+                                averageCallTime: '4:32',
+                                customerSatisfaction: 4.6,
+                                goalsAchieved: 92,
+                                attendanceRate: 98
+                            }
+                        },
+                        'M2': {
+                            categories: [],
+                            badges: [],
+                            performance: {}
+                        }
+                    }
+                },
+
+                'carlos.lopez': {
+                    password: 'carlos123',
+                    role: 'asesor',
+                    name: 'Carlos López',
+                    email: 'carlos.lopez@cnci.com',
+                    phone: '+52 55 9876 5432',
+                    department: 'Atención al Cliente',
+                    supervisor: 'supervisor1',
+                    status: 'active',
+                    createdAt: '2024-01-15',
+                    lastLogin: null,
+                    currentModule: 'M1',
+                    moduleData: {
+                        'M1': {
+                            categories: [
+                                {
+                                    id: 'communication',
+                                    name: 'Comunicación',
+                                    score: 7.2,
+                                    color: 'blue',
+                                    criteria: [
+                                        { name: 'Claridad en la comunicación', score: 7.5, weight: 0.3 },
+                                        { name: 'Escucha activa', score: 6.8, weight: 0.3 },
+                                        { name: 'Empatía', score: 7.3, weight: 0.4 }
+                                    ],
+                                    supervisionComment: 'Buen desempeño general. Trabajar en escucha activa.',
+                                    qualityComment: 'Calidad aceptable. Mejorar la paciencia con clientes difíciles.',
+                                    lastEvaluation: '2024-01-15',
+                                    evaluator: 'supervisor1'
+                                }
+                            ],
+                            badges: [
+                                { 
+                                    emoji: '📈', 
+                                    title: 'En Crecimiento', 
+                                    description: 'Reconocimiento por mejora continua.',
+                                    dateEarned: '2024-01-25',
+                                    criteria: 'Mejora sostenida en evaluaciones'
+                                }
+                            ],
+                            performance: {
+                                callsHandled: 198,
+                                averageCallTime: '5:15',
+                                customerSatisfaction: 4.1,
+                                goalsAchieved: 78,
+                                attendanceRate: 95
+                            }
+                        }
+                    }
+                },
+
+                'ana.martinez': {
+                    password: 'ana123',
+                    role: 'asesor',
+                    name: 'Ana Martínez',
+                    email: 'ana.martinez@cnci.com',
+                    phone: '+52 55 5555 1234',
+                    department: 'Ventas',
+                    supervisor: 'supervisor1',
+                    status: 'active',
+                    createdAt: '2024-01-15',
+                    lastLogin: null,
+                    currentModule: 'M2',
+                    moduleData: {
+                        'M2': {
+                            categories: [
+                                {
+                                    id: 'sales_technique',
+                                    name: 'Técnica de Ventas',
+                                    score: 9.1,
+                                    color: 'purple',
+                                    criteria: [
+                                        { name: 'Identificación de necesidades', score: 9.2, weight: 0.3 },
+                                        { name: 'Presentación del producto', score: 8.8, weight: 0.3 },
+                                        { name: 'Manejo de objeciones', score: 9.3, weight: 0.4 }
+                                    ],
+                                    supervisionComment: 'Excelente técnica de ventas. Manejo excepcional de objeciones.',
+                                    qualityComment: 'Calidad superior en presentaciones. Muy profesional.',
+                                    lastEvaluation: '2024-01-18',
+                                    evaluator: 'supervisor1'
+                                }
+                            ],
+                            badges: [
+                                { 
+                                    emoji: '💎', 
+                                    title: 'Vendedor Diamante', 
+                                    description: 'Reconocimiento por excelencia en ventas.',
+                                    dateEarned: '2024-01-22',
+                                    criteria: 'Puntuación superior a 9.0 en técnicas de ventas'
+                                }
+                            ],
+                            performance: {
+                                salesMade: 45,
+                                conversionRate: 68,
+                                averageTicket: 2850,
+                                goalsAchieved: 120,
+                                attendanceRate: 100
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Local data storage (includes admin + sample data)
+        const systemData = {
+            config: sampleData.config,
+            users: {
+                // Super admin (local only for security)
+                'admin': {
+                    password: 'admin123',
+                    role: 'super_admin',
+                    name: 'Administrador Principal',
+                    status: 'active',
+                    createdAt: '2024-01-01',
+                    permissions: ['all']
+                },
+                ...sampleData.users
+            }
+        };
+
+        // DOM Elements Cache
+        const elements = {
+            loginForm: document.getElementById('loginForm'),
+            errorMessage: document.getElementById('errorMessage'),
+            errorText: document.getElementById('errorText'),
+            loadingSpinner: document.getElementById('loadingSpinner'),
+            loginButton: document.getElementById('loginButton'),
+            
+            // Views
+            loginView: document.querySelector('body > div:first-child'),
+            superAdminView: document.getElementById('superAdminView'),
+            supervisorView: document.getElementById('supervisorView'),
+            asesorView: document.getElementById('asesorView'),
+            
+            // Tables
+            usersTableBody: document.getElementById('usersTableBody'),
+            asesoresTableBody: document.getElementById('asesoresTableBody'),
+
+            // Firebase status elements
+            firebaseStatus: document.getElementById('firebaseStatus'),
+            statusIcon: document.getElementById('statusIcon'),
+            statusText: document.getElementById('statusText'),
+            adminFirebaseStatus: document.getElementById('adminFirebaseStatus'),
+            adminStatusIcon: document.getElementById('adminStatusIcon'),
+            adminStatusText: document.getElementById('adminStatusText')
+        };
+
+        /**
+         * Firebase Integration Functions
+         */
+        
+        // Initialize Firebase connection with retry logic
+        async function initializeFirebase() {
+            try {
+                console.log('Initializing Firebase connection...');
+                updateFirebaseStatus('connecting', 'Conectando a Firebase...');
+                
+                // Test Firebase connection with a simple read
+                const testDoc = await db.collection('system_status').doc('connection_test').get();
+                
+                // If we get here, Firebase is connected
+                isFirebaseConnected = true;
+                firebaseRetryCount = 0;
+                updateFirebaseStatus('connected', 'Conectado a Firebase');
+                
+                console.log('Firebase connected successfully');
+                
+                // Load existing data from Firebase
+                await loadFromFirebase();
+                
+                // Update connection status in Firebase
+                await updateConnectionStatus();
+                
+                return true;
+                
+            } catch (error) {
+                console.warn('Firebase connection failed:', error);
+                isFirebaseConnected = false;
+                firebaseRetryCount++;
+                
+                if (firebaseRetryCount < MAX_RETRY_ATTEMPTS) {
+                    updateFirebaseStatus('retrying', `Reintentando conexión (${firebaseRetryCount}/${MAX_RETRY_ATTEMPTS})...`);
+                    setTimeout(() => initializeFirebase(), 2000 * firebaseRetryCount);
+                } else {
+                    updateFirebaseStatus('offline', 'Modo offline - Datos locales');
+                }
+                
+                return false;
+            }
+        }
+
+        // Update Firebase connection status in UI
+        function updateFirebaseStatus(status, message) {
+            const statusClasses = {
+                connecting: { bg: 'bg-yellow-100 border-yellow-300 text-yellow-800', icon: 'bg-yellow-500' },
+                connected: { bg: 'bg-green-100 border-green-300 text-green-800', icon: 'bg-green-500' },
+                retrying: { bg: 'bg-orange-100 border-orange-300 text-orange-800', icon: 'bg-orange-500' },
+                offline: { bg: 'bg-gray-100 border-gray-300 text-gray-800', icon: 'bg-gray-500' },
+                error: { bg: 'bg-red-100 border-red-300 text-red-800', icon: 'bg-red-500' }
+            };
+
+            const statusClass = statusClasses[status] || statusClasses.offline;
+
+            // Update login screen status
+            if (elements.firebaseStatus) {
+                elements.firebaseStatus.className = `mb-4 p-3 rounded-lg text-sm border ${statusClass.bg}`;
+                elements.firebaseStatus.classList.remove('hidden');
+                elements.statusIcon.className = `w-3 h-3 rounded-full mr-2 ${statusClass.icon}`;
+                elements.statusText.textContent = message;
+            }
+
+            // Update admin panel status
+            if (elements.adminStatusIcon && elements.adminStatusText) {
+                elements.adminStatusIcon.className = `w-2 h-2 rounded-full mr-2 ${statusClass.icon}`;
+                elements.adminStatusText.textContent = status === 'connected' ? 'Conectado' : 'Desconectado';
+            }
+        }
+
+        // Update connection status in Firebase
+        async function updateConnectionStatus() {
+            if (!isFirebaseConnected) return;
+
+            try {
+                await db.collection('system_status').doc('connection').set({
+                    lastConnection: firebase.firestore.FieldValue.serverTimestamp(),
+                    status: 'active',
+                    version: systemData.config.version,
+                    userAgent: navigator.userAgent
+                });
+            } catch (error) {
+                console.error('Error updating connection status:', error);
+            }
+        }
+
+        // Initialize sample data in Firebase
+        async function initializeSampleData() {
+            if (!isFirebaseConnected) {
+                showError('Firebase no está conectado. No se pueden inicializar los datos.');
+                return;
+            }
+
+            try {
+                showLoading(true);
+                console.log('Initializing sample data in Firebase...');
+
+                // Create batch for efficient writes
+                const batch = db.batch();
+
+                // Initialize system configuration
+                const configRef = db.collection('config').doc('system');
+                batch.set(configRef, {
+                    ...sampleData.config,
+                    initializedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    initializedBy: 'admin'
+                });
+
+                // Initialize users (excluding admin)
+                Object.entries(sampleData.users).forEach(([username, userData]) => {
+                    const userRef = db.collection('users').doc(username);
+                    batch.set(userRef, {
+                        ...userData,
+                        syncedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        syncVersion: 1
+                    });
+                });
+
+                // Initialize modules configuration
+                const modulesRef = db.collection('config').doc('modules');
+                batch.set(modulesRef, {
+                    modules: MODULES,
+                    lastUpdate: firebase.firestore.FieldValue.serverTimestamp(),
+                    version: '1.0'
+                });
+
+                // Initialize system statistics
+                const statsRef = db.collection('system_status').doc('statistics');
+                batch.set(statsRef, {
+                    totalUsers: Object.keys(sampleData.users).length,
+                    totalSupervisors: Object.values(sampleData.users).filter(u => u.role === 'supervisor').length,
+                    totalAsesores: Object.values(sampleData.users).filter(u => u.role === 'asesor').length,
+                    totalModules: Object.keys(MODULES).length,
+                    lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Commit batch
+                await batch.commit();
+
+                console.log('Sample data initialized successfully');
+                showSuccess('Datos de ejemplo inicializados correctamente en Firebase');
+                
+                // Refresh UI
+                if (currentUser && currentUser.role === 'super_admin') {
+                    updateSystemStats();
+                    loadAllUsers();
+                }
+
+            } catch (error) {
+                console.error('Error initializing sample data:', error);
+                showError('Error al inicializar datos: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Sync data with Firebase
+        async function syncWithFirebase() {
+            if (!isFirebaseConnected) {
+                showError('Firebase no está conectado. Usando datos locales.');
+                return;
+            }
+
+            try {
+                showLoading(true);
+                console.log('Syncing data with Firebase...');
+                
+                // Create batch for efficient writes
+                const batch = db.batch();
+                let operationCount = 0;
+                const MAX_BATCH_SIZE = 500;
+
+                // Sync system config
+                const configRef = db.collection('config').doc('system');
+                batch.set(configRef, {
+                    ...systemData.config,
+                    lastSync: firebase.firestore.FieldValue.serverTimestamp(),
+                    syncedBy: currentUser ? currentUser.username : 'system'
+                }, { merge: true });
+                operationCount++;
+
+                // Sync users (excluding admin for security)
+                for (const [username, userData] of Object.entries(systemData.users)) {
+                    if (username !== 'admin' && operationCount < MAX_BATCH_SIZE) {
+                        const userRef = db.collection('users').doc(username);
+                        batch.set(userRef, {
+                            ...userData,
+                            lastSync: firebase.firestore.FieldValue.serverTimestamp(),
+                            syncVersion: (userData.syncVersion || 0) + 1
+                        }, { merge: true });
+                        operationCount++;
+                    }
+                }
+
+                // Commit batch
+                if (operationCount > 0) {
+                    await batch.commit();
+                    console.log(`Synced ${operationCount} documents to Firebase`);
+                }
+
+                // Update connection status
+                await updateConnectionStatus();
+
+                showSuccess(`Datos sincronizados correctamente (${operationCount} documentos)`);
+                
+            } catch (error) {
+                console.error('Error syncing with Firebase:', error);
+                showError('Error al sincronizar con Firebase: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Load data from Firebase
+        async function loadFromFirebase() {
+            if (!isFirebaseConnected) return;
+
+            try {
+                console.log('Loading data from Firebase...');
+
+                // Load system configuration
+                const configDoc = await db.collection('config').doc('system').get();
+                if (configDoc.exists) {
+                    const configData = configDoc.data();
+                    // Merge with local config, preserving local admin settings
+                    Object.assign(systemData.config, {
+                        loginTitle: configData.loginTitle || systemData.config.loginTitle,
+                        loginSubtitle: configData.loginSubtitle || systemData.config.loginSubtitle,
+                        version: configData.version || systemData.config.version,
+                        lastUpdate: configData.lastUpdate || systemData.config.lastUpdate
+                    });
+                }
+
+                // Load users (excluding admin)
+                const usersSnapshot = await db.collection('users').get();
+                usersSnapshot.forEach(doc => {
+                    const userData = doc.data();
+                    // Only load if not admin (admin stays local for security)
+                    if (doc.id !== 'admin') {
+                        systemData.users[doc.id] = userData;
+                    }
+                });
+
+                console.log(`Loaded ${usersSnapshot.size} users from Firebase`);
+                
+                // Update login screen with loaded config
+                if (document.getElementById('loginTitle')) {
+                    document.getElementById('loginTitle').textContent = systemData.config.loginTitle;
+                    document.getElementById('loginSubtitle').textContent = systemData.config.loginSubtitle;
+                }
+
+            } catch (error) {
+                console.error('Error loading from Firebase:', error);
+                // Don't show error to user, just log it and continue with local data
+            }
+        }
+
+        // Export all data
+        async function exportAllData() {
+            try {
+                showLoading(true);
+
+                // Prepare export data
+                const exportData = {
+                    exportInfo: {
+                        timestamp: new Date().toISOString(),
+                        version: systemData.config.version,
+                        exportedBy: currentUser ? currentUser.username : 'system',
+                        totalUsers: Object.keys(systemData.users).length - 1, // Exclude admin
+                        firebaseConnected: isFirebaseConnected
+                    },
+                    config: systemData.config,
+                    modules: MODULES,
+                    users: Object.fromEntries(
+                        Object.entries(systemData.users).filter(([username]) => username !== 'admin')
+                    )
+                };
+
+                // Create and download JSON file
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `cnci_system_export_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                showSuccess('Datos exportados correctamente');
+
+            } catch (error) {
+                console.error('Error exporting data:', error);
+                showError('Error al exportar datos: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        /**
+         * Utility Functions
+         */
+        
+        // Show error message with auto-hide
+        function showError(message) {
+            elements.errorText.textContent = message;
+            elements.errorMessage.classList.remove('hidden');
+            setTimeout(() => {
+                elements.errorMessage.classList.add('hidden');
+            }, 5000);
+        }
+
+        // Show success message
+        function showSuccess(message) {
+            const successDiv = document.createElement('div');
+            successDiv.className = 'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg text-sm z-50 transform transition-all duration-300';
+            successDiv.textContent = message;
+            document.body.appendChild(successDiv);
+            
+            setTimeout(() => {
+                successDiv.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => successDiv.remove(), 300);
+            }, 3000);
+        }
+
+        // Show/hide loading state
+        function showLoading(show) {
+            if (show) {
+                elements.loadingSpinner.classList.remove('hidden');
+                if (elements.loginButton) {
+                    elements.loginButton.disabled = true;
+                    elements.loginButton.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            } else {
+                elements.loadingSpinner.classList.add('hidden');
+                if (elements.loginButton) {
+                    elements.loginButton.disabled = false;
+                    elements.loginButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+        }
+
+        // Hide all views
+        function hideAllViews() {
+            elements.loginView.classList.add('hidden');
+            elements.superAdminView.classList.add('hidden');
+            elements.supervisorView.classList.add('hidden');
+            elements.asesorView.classList.add('hidden');
+        }
+
+        // Calculate general score from categories
+        function calculateGeneralScore(categories) {
+            if (!categories || categories.length === 0) return 0;
+            const sum = categories.reduce((acc, cat) => acc + cat.score, 0);
+            return Math.round((sum / categories.length) * 10) / 10;
+        }
+
+        // Generate unique ID
+        function generateId() {
+            return 'id_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+        }
+
+        /**
+         * Module Management Functions
+         */
+        
+        // Initialize module selectors
+        function initializeModuleSelectors() {
+            const supervisorSelector = document.getElementById('supervisorModuleSelector');
+            const asesorSelector = document.getElementById('moduleSelector');
+            
+            // Clear existing options
+            if (supervisorSelector) {
+                supervisorSelector.innerHTML = '';
+                Object.values(MODULES).forEach(module => {
+                    const option = document.createElement('option');
+                    option.value = module.id;
+                    option.textContent = `${module.name} - ${module.title}`;
+                    supervisorSelector.appendChild(option);
+                });
+                supervisorSelector.value = currentModule;
+            }
+            
+            if (asesorSelector) {
+                asesorSelector.innerHTML = '';
+                Object.values(MODULES).forEach(module => {
+                    const option = document.createElement('option');
+                    option.value = module.id;
+                    option.textContent = `${module.name} - ${module.title}`;
+                    asesorSelector.appendChild(option);
+                });
+                asesorSelector.value = currentModule;
+            }
+            
+            updateModuleDescription();
+        }
+
+        // Update module description
+        function updateModuleDescription() {
+            const module = MODULES[currentModule];
+            const descElement = document.getElementById('moduleDescription');
+            const currentModuleInfo = document.getElementById('currentModuleInfo');
+            
+            if (module && descElement) {
+                descElement.textContent = module.description;
+            }
+            
+            if (module && currentModuleInfo) {
+                currentModuleInfo.textContent = `Módulo: ${module.name} - ${module.title}`;
+            }
+        }
+
+        // Load module data for supervisor
+        function loadModuleData() {
+            const selector = document.getElementById('supervisorModuleSelector');
+            currentModule = selector.value;
+            updateModuleDescription();
+            loadAsesoresTable();
+        }
+
+        // Load module data for asesor
+        function loadAsesorModuleData() {
+            const selector = document.getElementById('moduleSelector');
+            currentModule = selector.value;
+            
+            // Reload asesor data for the selected module
+            if (currentUser && currentUser.moduleData && currentUser.moduleData[currentModule]) {
+                const moduleData = currentUser.moduleData[currentModule];
+                loadCategories(moduleData.categories);
+                loadBadges(moduleData.badges);
+                
+                // Update general score
+                const generalScore = calculateGeneralScore(moduleData.categories);
+                document.getElementById('generalScore').textContent = generalScore.toFixed(1);
+                
+                // Update progress bar
+                const progressBar = document.getElementById('generalProgressBar');
+                progressBar.style.width = `${(generalScore / 10) * 100}%`;
+            }
+        }
+
+        /**
+         * Authentication Functions
+         */
+        
+        // Authenticate user
+        async function authenticateUser(username, password) {
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    const user = systemData.users[username];
+                    if (user && user.password === password && user.status === 'active') {
+                        // Update last login
+                        user.lastLogin = new Date().toISOString();
+                        
+                        resolve({
+                            username: username,
+                            role: user.role,
+                            name: user.name,
+                            ...user
+                        });
+                    } else {
+                        reject(new Error('Credenciales incorrectas o usuario inactivo'));
+                    }
+                }, 1500);
+            });
+        }
+
+        // Login form handler
+        elements.loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('usuario').value.trim();
+            const password = document.getElementById('password').value;
+            
+            if (!username || !password) {
+                showError('Por favor, completa todos los campos');
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                const userData = await authenticateUser(username, password);
+                currentUser = userData;
+                
+                // Store session
+                sessionStorage.setItem('currentUser', JSON.stringify(userData));
+                
+                // Update user data in Firebase if connected
+                if (isFirebaseConnected && username !== 'admin') {
+                    try {
+                        await db.collection('users').doc(username).update({
+                            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    } catch (error) {
+                        console.error('Error updating last login:', error);
+                    }
+                }
+                
+                // Route to appropriate view
+                hideAllViews();
+                
+                switch (userData.role) {
+                    case 'super_admin':
+                        loadSuperAdminView();
+                        break;
+                    case 'supervisor':
+                        loadSupervisorView(userData);
+                        break;
+                    case 'asesor':
+                        loadAsesorView(userData);
+                        break;
+                    default:
+                        showError('Rol de usuario no reconocido');
+                        return;
+                }
+                
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // Logout function
+        function logout() {
+            sessionStorage.removeItem('currentUser');
+            currentUser = null;
+            currentSupervisor = null;
+            
+            hideAllViews();
+            elements.loginView.classList.remove('hidden');
+            
+            // Reset form
+            elements.loginForm.reset();
+            elements.errorMessage.classList.add('hidden');
+            
+            showSuccess('Sesión cerrada correctamente');
+        }
+
+        /**
+         * Super Admin Functions
+         */
+        
+        // Load super admin view
+        function loadSuperAdminView() {
+            elements.superAdminView.classList.remove('hidden');
+            updateSystemStats();
+            loadAllUsers();
+        }
+
+        // Update system statistics
+        function updateSystemStats() {
+            const users = Object.values(systemData.users);
+            const supervisors = users.filter(u => u.role === 'supervisor');
+            let totalAsesores = users.filter(u => u.role === 'asesor').length;
+            let totalEvaluations = 0;
+            
+            // Count asesores from supervisors and evaluations
+            supervisors.forEach(sup => {
+                if (sup.asesores) {
+                    Object.values(sup.asesores).forEach(moduleAsesores => {
+                        totalAsesores += moduleAsesores.length;
+                        moduleAsesores.forEach(asesor => {
+                            if (asesor.categories) {
+                                totalEvaluations += asesor.categories.length;
+                            }
+                        });
+                    });
+                }
+            });
+            
+            // Update UI
+            document.getElementById('totalSupervisors').textContent = supervisors.length;
+            document.getElementById('totalAsesores').textContent = totalAsesores;
+            document.getElementById('totalEvaluations').textContent = totalEvaluations;
+        }
+
+        // Load all users in table
+        function loadAllUsers() {
+            const tbody = elements.usersTableBody;
+            tbody.innerHTML = '';
+            
+            Object.entries(systemData.users).forEach(([username, userData]) => {
+                if (username === 'admin') return; // Skip admin from table
+                
+                const row = createUserTableRow(username, userData);
+                tbody.appendChild(row);
+            });
+        }
+
+        // Create user table row
+        function createUserTableRow(username, userData) {
+            const row = document.createElement('tr');
+            const statusClass = userData.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+            const roleClass = userData.role === 'supervisor' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800';
+            
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${username}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${userData.name}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${roleClass}">
+                        ${userData.role === 'supervisor' ? 'Supervisor' : 'Asesor'}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+                        ${userData.status === 'active' ? 'Activo' : 'Inactivo'}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <button onclick="editUser('${username}')" class="text-cnci-blue hover:text-blue-700 transition-colors">Editar</button>
+                    <button onclick="toggleUserStatus('${username}')" class="text-yellow-600 hover:text-yellow-700 transition-colors">
+                        ${userData.status === 'active' ? 'Desactivar' : 'Activar'}
+                    </button>
+                    <button onclick="deleteUser('${username}')" class="text-red-600 hover:text-red-700 transition-colors">Eliminar</button>
+                </td>
+            `;
+            return row;
+        }
+
+        // Filter users
+        function filterUsers() {
+            const roleFilter = document.getElementById('roleFilter').value;
+            const searchTerm = document.getElementById('searchUsers').value.toLowerCase();
+            const rows = elements.usersTableBody.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                const username = row.cells[0].textContent.toLowerCase();
+                const name = row.cells[1].textContent.toLowerCase();
+                const role = row.cells[2].textContent.toLowerCase();
+                
+                const matchesRole = !roleFilter || role.includes(roleFilter);
+                const matchesSearch = !searchTerm || username.includes(searchTerm) || name.includes(searchTerm);
+                
+                row.style.display = matchesRole && matchesSearch ? '' : 'none';
+            });
+        }
+
+        // Create user modal functions
+        function openCreateUserModal() {
+            document.getElementById('createUserModal').classList.remove('hidden');
+        }
+
+        function closeCreateUserModal() {
+            document.getElementById('createUserModal').classList.add('hidden');
+            document.getElementById('createUserForm').reset();
+        }
+
+        // Handle create user form
+        document.getElementById('createUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('newUserName').value.trim();
+            const username = document.getElementById('newUserUsername').value.trim();
+            const password = document.getElementById('newUserPassword').value;
+            const role = document.getElementById('newUserRole').value;
+            
+            // Validate
+            if (systemData.users[username]) {
+                showError('El nombre de usuario ya existe');
+                return;
+            }
+            
+            // Create user
+            const newUser = {
+                password: password,
+                role: role,
+                name: name,
+                email: `${username}@cnci.com`,
+                status: 'active',
+                createdAt: new Date().toISOString().split('T')[0],
+                lastLogin: null,
+                syncVersion: 1
+            };
+            
+            if (role === 'supervisor') {
+                newUser.asesores = {};
+                newUser.permissions = ['manage_asesores', 'edit_titles', 'export_data'];
+            } else if (role === 'asesor') {
+                newUser.moduleData = {};
+                newUser.currentModule = 'M1';
+                newUser.department = 'General';
+                newUser.supervisor = null;
+                // Initialize with default module data
+                Object.keys(MODULES).forEach(moduleId => {
+                    newUser.moduleData[moduleId] = {
+                        categories: [],
+                        badges: [],
+                        performance: {}
+                    };
+                });
+            }
+            
+            systemData.users[username] = newUser;
+            
+            // Sync with Firebase if connected
+            if (isFirebaseConnected) {
+                try {
+                    await db.collection('users').doc(username).set(newUser);
+                } catch (error) {
+                    console.error('Error saving to Firebase:', error);
+                }
+            }
+            
+            closeCreateUserModal();
+            loadAllUsers();
+            updateSystemStats();
+            showSuccess('Usuario creado correctamente');
+        });
+
+        // Edit user functions
+        function editUser(username) {
+            editingUserId = username;
+            const userData = systemData.users[username];
+            
+            document.getElementById('editUserName').value = userData.name;
+            document.getElementById('editUserUsername').value = username;
+            document.getElementById('editUserRole').value = userData.role;
+            
+            document.getElementById('editUserModal').classList.remove('hidden');
+        }
+
+        function closeEditUserModal() {
+            document.getElementById('editUserModal').classList.add('hidden');
+            document.getElementById('editUserForm').reset();
+            document.getElementById('resetPassword').checked = false;
+            document.getElementById('newPassword').classList.add('hidden');
+            editingUserId = null;
+        }
+
+        // Handle reset password checkbox
+        document.getElementById('resetPassword').addEventListener('change', (e) => {
+            const passwordField = document.getElementById('newPassword');
+            if (e.target.checked) {
+                passwordField.classList.remove('hidden');
+                passwordField.required = true;
+            } else {
+                passwordField.classList.add('hidden');
+                passwordField.required = false;
+                passwordField.value = '';
+            }
+        });
+
+        // Handle edit user form
+        document.getElementById('editUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const newName = document.getElementById('editUserName').value.trim();
+            const newUsername = document.getElementById('editUserUsername').value.trim();
+            const newRole = document.getElementById('editUserRole').value;
+            const resetPassword = document.getElementById('resetPassword').checked;
+            const newPassword = document.getElementById('newPassword').value;
+            
+            // Validate username change
+            if (newUsername !== editingUserId && systemData.users[newUsername]) {
+                showError('El nuevo nombre de usuario ya existe');
+                return;
+            }
+            
+            const userData = systemData.users[editingUserId];
+            
+            // Update user data
+            userData.name = newName;
+            userData.role = newRole;
+            userData.email = `${newUsername}@cnci.com`;
+            userData.lastUpdate = new Date().toISOString();
+            
+            if (resetPassword && newPassword) {
+                userData.password = newPassword;
+            }
+            
+            // Handle username change
+            if (newUsername !== editingUserId) {
+                systemData.users[newUsername] = userData;
+                delete systemData.users[editingUserId];
+                
+                // Update Firebase
+                if (isFirebaseConnected) {
+                    try {
+                        await db.collection('users').doc(newUsername).set(userData);
+                        await db.collection('users').doc(editingUserId).delete();
+                    } catch (error) {
+                        console.error('Error updating Firebase:', error);
+                    }
+                }
+            } else if (isFirebaseConnected) {
+                try {
+                    await db.collection('users').doc(editingUserId).update(userData);
+                } catch (error) {
+                    console.error('Error updating Firebase:', error);
+                }
+            }
+            
+            closeEditUserModal();
+            loadAllUsers();
+            showSuccess('Usuario actualizado correctamente');
+        });
+
+        // Toggle user status
+        async function toggleUserStatus(username) {
+            const userData = systemData.users[username];
+            userData.status = userData.status === 'active' ? 'inactive' : 'active';
+            userData.lastUpdate = new Date().toISOString();
+            
+            // Update Firebase
+            if (isFirebaseConnected) {
+                try {
+                    await db.collection('users').doc(username).update({ 
+                        status: userData.status,
+                        lastUpdate: userData.lastUpdate
+                    });
+                } catch (error) {
+                    console.error('Error updating Firebase:', error);
+                }
+            }
+            
+            loadAllUsers();
+            showSuccess(`Usuario ${userData.status === 'active' ? 'activado' : 'desactivado'} correctamente`);
+        }
+
+        // Delete user
+        async function deleteUser(username) {
+            if (confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.')) {
+                delete systemData.users[username];
+                
+                // Delete from Firebase
+                if (isFirebaseConnected) {
+                    try {
+                        await db.collection('users').doc(username).delete();
+                    } catch (error) {
+                        console.error('Error deleting from Firebase:', error);
+                    }
+                }
+                
+                loadAllUsers();
+                updateSystemStats();
+                showSuccess('Usuario eliminado correctamente');
+            }
+        }
+
+        /**
+         * Supervisor Functions
+         */
+        
+        // Load supervisor view
+        function loadSupervisorView(userData) {
+            currentSupervisor = userData;
+            elements.supervisorView.classList.remove('hidden');
+            
+            document.getElementById('supervisorName').textContent = userData.name;
+            
+            // Initialize module selectors
+            initializeModuleSelectors();
+            
+            // Load current titles
+            document.getElementById('mainTitle').value = systemData.config.loginTitle;
+            document.getElementById('subtitle').value = systemData.config.loginSubtitle;
+            
+            loadAsesoresTable();
+        }
+
+        // Update login titles
+        async function updateLoginTitles() {
+            const mainTitle = document.getElementById('mainTitle').value.trim();
+            const subtitle = document.getElementById('subtitle').value.trim();
+            
+            if (!mainTitle || !subtitle) {
+                showError('Por favor, completa ambos campos');
+                return;
+            }
+            
+            // Update system config
+            systemData.config.loginTitle = mainTitle;
+            systemData.config.loginSubtitle = subtitle;
+            systemData.config.lastUpdate = new Date().toISOString();
+            
+            // Update Firebase
+            if (isFirebaseConnected) {
+                try {
+                    await db.collection('config').doc('system').update({
+                        loginTitle: mainTitle,
+                        loginSubtitle: subtitle,
+                        lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } catch (error) {
+                    console.error('Error updating Firebase:', error);
+                }
+            }
+            
+            // Update login screen immediately
+            document.getElementById('loginTitle').textContent = mainTitle;
+            document.getElementById('loginSubtitle').textContent = subtitle;
+            
+            showSuccess('Títulos actualizados correctamente');
+        }
+
+        // Load asesores table
+        function loadAsesoresTable() {
+            const tbody = elements.asesoresTableBody;
+            tbody.innerHTML = '';
+            
+            const moduleAsesores = currentSupervisor.asesores && currentSupervisor.asesores[currentModule] 
+                ? currentSupervisor.asesores[currentModule] 
+                : [];
+            
+            if (moduleAsesores.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                        <div class="text-4xl mb-2">👥</div>
+                        <p>No hay asesores registrados para ${MODULES[currentModule].name}</p>
+                        <p class="text-sm">Usa el botón "Añadir Asesor" para comenzar</p>
+                    </td>
+                `;
+                tbody.appendChild(row);
+                return;
+            }
+            
+            moduleAsesores.forEach(asesor => {
+                const row = createAsesorTableRow(asesor);
+                tbody.appendChild(row);
+            });
+        }
+
+        // Create asesor table row
+        function createAsesorTableRow(asesor) {
+            const row = document.createElement('tr');
+            const generalScore = calculateGeneralScore(asesor.categories);
+            
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${asesor.username}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${asesor.name}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">••••••••</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getScoreColor(generalScore)}">
+                        ${generalScore.toFixed(1)}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <button onclick="openAsesorDetailsModal('${asesor.id}')" class="text-cnci-blue hover:text-blue-700 transition-colors">Detalles</button>
+                    <button onclick="deleteAsesor('${asesor.id}')" class="text-red-600 hover:text-red-700 transition-colors">Eliminar</button>
+                </td>
+            `;
+            return row;
+        }
+
+        // Get score color class
+        function getScoreColor(score) {
+            if (score >= 8) return 'bg-green-100 text-green-800';
+            if (score >= 6) return 'bg-yellow-100 text-yellow-800';
+            return 'bg-red-100 text-red-800';
+        }
+
+        // Add asesor modal functions
+        function openAddAsesorModal() {
+            document.getElementById('addAsesorModal').classList.remove('hidden');
+        }
+
+        function closeAddAsesorModal() {
+            document.getElementById('addAsesorModal').classList.add('hidden');
+            document.getElementById('addAsesorForm').reset();
+        }
+
+        // Handle add asesor form
+        document.getElementById('addAsesorForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('newAsesorName').value.trim();
+            const username = document.getElementById('newAsesorUsername').value.trim();
+            const password = document.getElementById('newAsesorPassword').value;
+            
+            // Initialize asesores object if it doesn't exist
+            if (!currentSupervisor.asesores) {
+                currentSupervisor.asesores = {};
+            }
+            if (!currentSupervisor.asesores[currentModule]) {
+                currentSupervisor.asesores[currentModule] = [];
+            }
+            
+            // Validate username uniqueness
+            const existingUsernames = currentSupervisor.asesores[currentModule].map(a => a.username);
+            if (existingUsernames.includes(username) || systemData.users[username]) {
+                showError('El nombre de usuario ya existe');
+                return;
+            }
+            
+            // Get module configuration
+            const moduleConfig = MODULES[currentModule];
+            
+            // Create categories based on module configuration
+            const categories = moduleConfig.categories.map(catConfig => ({
+                id: catConfig.id,
+                name: catConfig.name,
+                score: 0,
+                color: catConfig.color,
+                criteria: catConfig.criteria.map(criterion => ({
+                    name: criterion.name,
+                    score: 0,
+                    weight: criterion.weight
+                })),
+                supervisionComment: 'Pendiente de evaluación.',
+                qualityComment: 'Pendiente de evaluación.',
+                lastEvaluation: null,
+                evaluator: currentSupervisor.username
+            }));
+            
+            // Create new asesor
+            const newAsesor = {
+                id: generateId(),
+                username: username,
+                name: name,
+                password: password,
+                module: currentModule,
+                email: `${username}@cnci.com`,
+                phone: '',
+                department: 'General',
+                supervisor: currentSupervisor.username,
+                categories: categories,
+                badges: [],
+                performance: {
+                    callsHandled: 0,
+                    averageCallTime: '0:00',
+                    customerSatisfaction: 0,
+                    goalsAchieved: 0,
+                    attendanceRate: 100
+                },
+                createdAt: new Date().toISOString().split('T')[0],
+                lastUpdate: new Date().toISOString()
+            };
+            
+            // Add to supervisor's asesores
+            currentSupervisor.asesores[currentModule].push(newAsesor);
+            
+            // Also create as standalone user
+            systemData.users[username] = {
+                password: password,
+                role: 'asesor',
+                name: name,
+                email: `${username}@cnci.com`,
+                phone: '',
+                department: 'General',
+                supervisor: currentSupervisor.username,
+                status: 'active',
+                createdAt: new Date().toISOString().split('T')[0],
+                lastLogin: null,
+                currentModule: currentModule,
+                moduleData: {
+                    [currentModule]: {
+                        categories: categories,
+                        badges: [],
+                        performance: newAsesor.performance
+                    }
+                }
+            };
+            
+            // Initialize other modules with empty data
+            Object.keys(MODULES).forEach(moduleId => {
+                if (moduleId !== currentModule) {
+                    systemData.users[username].moduleData[moduleId] = {
+                        categories: [],
+                        badges: [],
+                        performance: {}
+                    };
+                }
+            });
+            
+            // Update Firebase
+            if (isFirebaseConnected) {
+                try {
+                    // Update supervisor data
+                    await db.collection('users').doc(currentSupervisor.username).update({
+                        asesores: currentSupervisor.asesores,
+                        lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // Create standalone asesor user
+                    await db.collection('users').doc(username).set(systemData.users[username]);
+                } catch (error) {
+                    console.error('Error saving to Firebase:', error);
+                }
+            }
+            
+            closeAddAsesorModal();
+            loadAsesoresTable();
+            showSuccess('Asesor añadido correctamente');
+        });
+
+        // Clear table modal functions
+        function openClearTableModal() {
+            document.getElementById('clearTableModal').classList.remove('hidden');
+        }
+
+        function closeClearTableModal() {
+            document.getElementById('clearTableModal').classList.add('hidden');
+        }
+
+        // Clear all asesores
+        async function clearAllAsesores() {
+            if (!currentSupervisor.asesores || !currentSupervisor.asesores[currentModule]) {
+                closeClearTableModal();
+                return;
+            }
+            
+            const asesores = currentSupervisor.asesores[currentModule];
+            
+            // Remove from standalone users
+            asesores.forEach(asesor => {
+                delete systemData.users[asesor.username];
+            });
+            
+            // Clear from supervisor
+            currentSupervisor.asesores[currentModule] = [];
+            
+            // Update Firebase
+            if (isFirebaseConnected) {
+                try {
+                    // Update supervisor
+                    await db.collection('users').doc(currentSupervisor.username).update({
+                        asesores: currentSupervisor.asesores,
+                        lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // Delete standalone users
+                    const batch = db.batch();
+                    asesores.forEach(asesor => {
+                        const userRef = db.collection('users').doc(asesor.username);
+                        batch.delete(userRef);
+                    });
+                    await batch.commit();
+                } catch (error) {
+                    console.error('Error updating Firebase:', error);
+                }
+            }
+            
+            closeClearTableModal();
+            loadAsesoresTable();
+            showSuccess('Todos los asesores han sido eliminados');
+        }
+
+        // Delete individual asesor
+        async function deleteAsesor(asesorId) {
+            if (!confirm('¿Estás seguro de que deseas eliminar este asesor?')) return;
+            
+            const moduleAsesores = currentSupervisor.asesores[currentModule];
+            const asesorIndex = moduleAsesores.findIndex(a => a.id === asesorId);
+            
+            if (asesorIndex === -1) return;
+            
+            const asesor = moduleAsesores[asesorIndex];
+            
+            // Remove from supervisor's list
+            moduleAsesores.splice(asesorIndex, 1);
+            
+            // Remove from standalone users
+            delete systemData.users[asesor.username];
+            
+            // Update Firebase
+            if (isFirebaseConnected) {
+                try {
+                    // Update supervisor
+                    await db.collection('users').doc(currentSupervisor.username).update({
+                        asesores: currentSupervisor.asesores,
+                        lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // Delete standalone user
+                    await db.collection('users').doc(asesor.username).delete();
+                } catch (error) {
+                    console.error('Error updating Firebase:', error);
+                }
+            }
+            
+            loadAsesoresTable();
+            showSuccess('Asesor eliminado correctamente');
+        }
+
+        // Export asesores data
+        function exportAsesoresData() {
+            const moduleAsesores = currentSupervisor.asesores && currentSupervisor.asesores[currentModule] 
+                ? currentSupervisor.asesores[currentModule] 
+                : [];
+            
+            if (moduleAsesores.length === 0) {
+                showError('No hay datos para exportar');
+                return;
+            }
+            
+            const exportData = {
+                exportInfo: {
+                    timestamp: new Date().toISOString(),
+                    module: currentModule,
+                    moduleName: MODULES[currentModule].name,
+                    supervisor: currentSupervisor.name,
+                    totalAsesores: moduleAsesores.length
+                },
+                asesores: moduleAsesores
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `asesores_${currentModule}_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showSuccess('Datos exportados correctamente');
+        }
+
+        // Asesor details modal functions
+        function openAsesorDetailsModal(asesorId) {
+            editingAsesorId = asesorId;
+            const asesor = currentSupervisor.asesores[currentModule].find(a => a.id === asesorId);
+            
+            if (!asesor) return;
+            
+            const content = document.getElementById('asesorDetailsContent');
+            content.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-4">Información Personal</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Nombre</label>
+                                <input type="text" id="editAsesorName" value="${asesor.name}" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Usuario</label>
+                                <input type="text" id="editAsesorUsername" value="${asesor.username}" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Email</label>
+                                <input type="email" id="editAsesorEmail" value="${asesor.email || ''}" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Teléfono</label>
+                                <input type="tel" id="editAsesorPhone" value="${asesor.phone || ''}" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:border-cnci-blue focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-4">Evaluaciones</h4>
+                        <div id="categoriesEditor" class="space-y-4">
+                            ${asesor.categories.map((category, index) => `
+                                <div class="border border-gray-200 rounded-lg p-4">
+                                    <h5 class="font-medium text-gray-800 mb-3">${category.name}</h5>
+                                    <div class="space-y-2">
+                                        ${category.criteria.map((criterion, critIndex) => `
+                                            <div class="flex items-center space-x-2">
+                                                <label class="text-sm text-gray-600 flex-1">${criterion.name}</label>
+                                                <input type="number" min="0" max="10" step="0.1" 
+                                                       value="${criterion.score}" 
+                                                       data-category="${index}" 
+                                                       data-criterion="${critIndex}"
+                                                       class="criterion-score w-20 border border-gray-300 rounded px-2 py-1 text-sm focus:border-cnci-blue focus:outline-none">
+                                            </div>
+                                        `).join('')}
+                                        <div class="mt-3">
+                                            <label class="block text-sm font-medium text-gray-700">Comentario de Supervisión</label>
+                                            <textarea data-category="${index}" data-field="supervisionComment" 
+                                                      class="category-comment mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:border-cnci-blue focus:outline-none" 
+                                                      rows="2">${category.supervisionComment || ''}</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add event listeners for real-time score calculation
+            content.querySelectorAll('.criterion-score').forEach(input => {
+                input.addEventListener('input', updateCategoryScore);
+            });
+            
+            document.getElementById('asesorDetailsModal').classList.remove('hidden');
+        }
+
+        function closeAsesorDetailsModal() {
+            document.getElementById('asesorDetailsModal').classList.add('hidden');
+            editingAsesorId = null;
+        }
+
+        // Update category score based on criteria
+        function updateCategoryScore(event) {
+            const input = event.target;
+            const categoryIndex = parseInt(input.dataset.category);
+            const criterionIndex = parseInt(input.dataset.criterion);
+            
+            const asesor = currentSupervisor.asesores[currentModule].find(a => a.id === editingAsesorId);
+            if (!asesor) return;
+            
+            const category = asesor.categories[categoryIndex];
+            const criterion = category.criteria[criterionIndex];
+            
+            // Update criterion score
+            criterion.score = parseFloat(input.value) || 0;
+            
+            // Recalculate category score based on weighted criteria
+            let weightedSum = 0;
+            let totalWeight = 0;
+            
+            category.criteria.forEach(crit => {
+                weightedSum += crit.score * crit.weight;
+                totalWeight += crit.weight;
+            });
+            
+            category.score = totalWeight > 0 ? weightedSum / totalWeight : 0;
+        }
+
+        // Save asesor details
+        async function saveAsesorDetails() {
+            const asesor = currentSupervisor.asesores[currentModule].find(a => a.id === editingAsesorId);
+            if (!asesor) return;
+            
+            // Update basic info
+            const newName = document.getElementById('editAsesorName').value.trim();
+            const newUsername = document.getElementById('editAsesorUsername').value.trim();
+            const newEmail = document.getElementById('editAsesorEmail').value.trim();
+            const newPhone = document.getElementById('editAsesorPhone').value.trim();
+            
+            // Check if username changed and is unique
+            if (newUsername !== asesor.username && systemData.users[newUsername]) {
+                showError('El nombre de usuario ya existe');
+                return;
+            }
+            
+            const oldUsername = asesor.username;
+            
+            // Update asesor data
+            asesor.name = newName;
+            asesor.username = newUsername;
+            asesor.email = newEmail;
+            asesor.phone = newPhone;
+            asesor.lastUpdate = new Date().toISOString();
+            
+            // Update category comments
+            document.querySelectorAll('.category-comment').forEach(textarea => {
+                const categoryIndex = parseInt(textarea.dataset.category);
+                const field = textarea.dataset.field;
+                asesor.categories[categoryIndex][field] = textarea.value;
+            });
+            
+            // Update standalone user if username changed
+            if (oldUsername !== newUsername) {
+                systemData.users[newUsername] = systemData.users[oldUsername];
+                delete systemData.users[oldUsername];
+            }
+            
+            // Update standalone user data
+            const standaloneUser = systemData.users[newUsername];
+            if (standaloneUser) {
+                standaloneUser.name = newName;
+                standaloneUser.email = newEmail;
+                standaloneUser.phone = newPhone;
+                standaloneUser.lastUpdate = new Date().toISOString();
+                
+                // Update module data
+                if (standaloneUser.moduleData && standaloneUser.moduleData[currentModule]) {
+                    standaloneUser.moduleData[currentModule].categories = asesor.categories;
+                }
+            }
+            
+            // Update Firebase
+            if (isFirebaseConnected) {
+                try {
+                    // Update supervisor data
+                    await db.collection('users').doc(currentSupervisor.username).update({
+                        asesores: currentSupervisor.asesores,
+                        lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // Update standalone user
+                    if (oldUsername !== newUsername) {
+                        await db.collection('users').doc(newUsername).set(standaloneUser);
+                        await db.collection('users').doc(oldUsername).delete();
+                    } else {
+                        await db.collection('users').doc(newUsername).update(standaloneUser);
+                    }
+                } catch (error) {
+                    console.error('Error updating Firebase:', error);
+                }
+            }
+            
+            closeAsesorDetailsModal();
+            loadAsesoresTable();
+            showSuccess('Datos del asesor actualizados correctamente');
+        }
+
+        /**
+         * Asesor Functions
+         */
+        
+        // Load asesor view
+        function loadAsesorView(userData) {
+            elements.asesorView.classList.remove('hidden');
+            
+            document.getElementById('asesorName').textContent = userData.name;
+            
+            // Initialize module selector
+            initializeModuleSelectors();
+            
+            // Set current module
+            currentModule = userData.currentModule || 'M1';
+            document.getElementById('moduleSelector').value = currentModule;
+            
+            // Load module data
+            loadAsesorModuleData();
+        }
+
+        // Switch tabs in asesor view
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active', 'border-cnci-blue', 'text-cnci-blue');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            document.getElementById(`tab-${tabName}`).classList.add('active', 'border-cnci-blue', 'text-cnci-blue');
+            document.getElementById(`tab-${tabName}`).classList.remove('border-transparent', 'text-gray-500');
+            
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            document.getElementById(`content-${tabName}`).classList.remove('hidden');
+        }
+
+        // Load categories for asesor view
+        function loadCategories(categories) {
+            const container = document.getElementById('categoriesContainer');
+            container.innerHTML = '';
+            
+            if (!categories || categories.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <div class="text-4xl mb-2">📊</div>
+                        <p>No hay evaluaciones disponibles para este módulo</p>
+                        <p class="text-sm">Contacta a tu supervisor para más información</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            categories.forEach(category => {
+                const categoryCard = createCategoryCard(category);
+                container.appendChild(categoryCard);
+            });
+        }
+
+        // Create category card
+        function createCategoryCard(category) {
+            const card = document.createElement('div');
+            const colorClasses = {
+                blue: 'from-blue-50 to-blue-100 border-blue-200',
+                green: 'from-green-50 to-green-100 border-green-200',
+                purple: 'from-purple-50 to-purple-100 border-purple-200',
+                orange: 'from-orange-50 to-orange-100 border-orange-200',
+                red: 'from-red-50 to-red-100 border-red-200'
+            };
+            
+            const colorClass = colorClasses[category.color] || colorClasses.blue;
+            
+            card.className = `bg-gradient-to-r ${colorClass} border rounded-lg p-6`;
+            card.innerHTML = `
+                <div class="flex justify-between items-start mb-4">
+                    <h4 class="text-lg font-semibold text-gray-800">${category.name}</h4>
+                    <span class="text-2xl font-bold text-gray-700">${category.score.toFixed(1)}</span>
+                </div>
+                
+                <div class="space-y-3 mb-4">
+                    ${category.criteria.map(criterion => `
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-700">${criterion.name}</span>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm font-medium text-gray-800">${criterion.score.toFixed(1)}</span>
+                                <div class="w-16 bg-gray-200 rounded-full h-2">
+                                    <div class="bg-${category.color}-600 h-2 rounded-full transition-all duration-300" 
+                                         style="width: ${(criterion.score / 10) * 100}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                ${category.supervisionComment ? `
+                    <div class="bg-white bg-opacity-50 rounded-lg p-3 mb-3">
+                        <h5 class="text-sm font-medium text-gray-700 mb-1">Comentario de Supervisión:</h5>
+                        <p class="text-sm text-gray-600">${category.supervisionComment}</p>
+                    </div>
+                ` : ''}
+                
+                ${category.qualityComment ? `
+                    <div class="bg-white bg-opacity-50 rounded-lg p-3">
+                        <h5 class="text-sm font-medium text-gray-700 mb-1">Comentario de Calidad:</h5>
+                        <p class="text-sm text-gray-600">${category.qualityComment}</p>
+                    </div>
+                ` : ''}
+                
+                ${category.lastEvaluation ? `
+                    <div class="mt-3 text-xs text-gray-500">
+                        Última evaluación: ${new Date(category.lastEvaluation).toLocaleDateString()}
+                    </div>
+                ` : ''}
+            `;
+            
+            return card;
+        }
+
+        // Load badges for asesor view
+        function loadBadges(badges) {
+            const container = document.getElementById('earnedBadges');
+            container.innerHTML = '';
+            
+            if (!badges || badges.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-2 text-center py-8 text-gray-500">
+                        <div class="text-4xl mb-2">🏆</div>
+                        <p>Aún no has obtenido insignias</p>
+                        <p class="text-sm">¡Sigue trabajando para ganar reconocimientos!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            badges.forEach(badge => {
+                const badgeCard = createBadgeCard(badge);
+                container.appendChild(badgeCard);
+            });
+        }
+
+        // Create badge card
+        function createBadgeCard(badge) {
+            const card = document.createElement('div');
+            card.className = 'bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-lg p-4 text-center';
+            card.innerHTML = `
+                <div class="text-4xl mb-2">${badge.emoji}</div>
+                <h4 class="font-semibold text-gray-800 mb-1">${badge.title}</h4>
+                <p class="text-sm text-gray-600 mb-2">${badge.description}</p>
+                ${badge.dateEarned ? `
+                    <div class="text-xs text-gray-500">
+                        Obtenida: ${new Date(badge.dateEarned).toLocaleDateString()}
+                    </div>
+                ` : ''}
+                ${badge.criteria ? `
+                    <div class="text-xs text-gray-500 mt-1">
+                        ${badge.criteria}
+                    </div>
+                ` : ''}
+            `;
+            return card;
+        }
+
+        /**
+         * Initialization
+         */
+        
+        // Initialize application
+        async function initializeApp() {
+            console.log('Initializing CNCI Evaluation System...');
+            
+            // Check for existing session
+            const savedUser = sessionStorage.getItem('currentUser');
+            if (savedUser) {
+                try {
+                    currentUser = JSON.parse(savedUser);
+                    
+                    // Verify user still exists and is active
+                    const userData = systemData.users[currentUser.username];
+                    if (userData && userData.status === 'active') {
+                        hideAllViews();
+                        
+                        switch (currentUser.role) {
+                            case 'super_admin':
+                                loadSuperAdminView();
+                                break;
+                            case 'supervisor':
+                                loadSupervisorView(currentUser);
+                                break;
+                            case 'asesor':
+                                loadAsesorView(currentUser);
+                                break;
+                        }
+                        
+                        console.log('Session restored for:', currentUser.username);
+                    } else {
+                        // Invalid session, clear it
+                        sessionStorage.removeItem('currentUser');
+                        currentUser = null;
+                    }
+                } catch (error) {
+                    console.error('Error restoring session:', error);
+                    sessionStorage.removeItem('currentUser');
+                    currentUser = null;
+                }
+            }
+            
+            // Initialize Firebase connection
+            await initializeFirebase();
+            
+            console.log('Application initialized successfully');
+        }
+
+        // Start application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initializeApp);
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97a0f62442a638ef',t:'MTc1NzAyNTM0Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
