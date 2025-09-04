@@ -89,8 +89,10 @@
             </button>
         </form>
 
+
+
         <!-- Footer -->
-        <div class="mt-8 text-center text-sm text-gray-500">
+        <div class="mt-4 text-center text-sm text-gray-500">
             <p>© 2024 CNCI - Sistema de Evaluación</p>
         </div>
     </div>
@@ -1316,41 +1318,6 @@
 
         // DOM Elements Cache - Initialize after DOM is loaded
         let elements = {};
-        
-        function initializeElements() {
-            elements = {
-                loginForm: document.getElementById('loginForm'),
-                errorMessage: document.getElementById('errorMessage'),
-                errorText: document.getElementById('errorText'),
-                loadingSpinner: document.getElementById('loadingSpinner'),
-                loginButton: document.getElementById('loginButton'),
-                
-                // Views
-                loginView: document.querySelector('body > div:first-child'),
-                superAdminView: document.getElementById('superAdminView'),
-                supervisorView: document.getElementById('supervisorView'),
-                asesorView: document.getElementById('asesorView'),
-                
-                // Tables
-                usersTableBody: document.getElementById('usersTableBody'),
-                asesoresTableBody: document.getElementById('asesoresTableBody'),
-
-                // Firebase status elements
-                firebaseStatus: document.getElementById('firebaseStatus'),
-                statusIcon: document.getElementById('statusIcon'),
-                statusText: document.getElementById('statusText'),
-                adminFirebaseStatus: document.getElementById('adminFirebaseStatus'),
-                adminStatusIcon: document.getElementById('adminStatusIcon'),
-                adminStatusText: document.getElementById('adminStatusText')
-            };
-            
-            console.log('Elements initialized:', {
-                loginForm: !!elements.loginForm,
-                superAdminView: !!elements.superAdminView,
-                supervisorView: !!elements.supervisorView,
-                asesorView: !!elements.asesorView
-            });
-        }
 
         /**
          * Firebase Integration Functions
@@ -1817,92 +1784,105 @@
          */
         
         // Authenticate user
-        async function authenticateUser(username, password) {
-            return new Promise((resolve, reject) => {
-                setTimeout(() => {
-                    const user = systemData.users[username];
-                    if (user && user.password === password && user.status === 'active') {
-                        // Update last login
-                        user.lastLogin = new Date().toISOString();
-                        
-                        resolve({
-                            username: username,
-                            role: user.role,
-                            name: user.name,
-                            ...user
-                        });
-                    } else {
-                        reject(new Error('Credenciales incorrectas o usuario inactivo'));
-                    }
-                }, 1500);
+        function authenticateUser(username, password) {
+            console.log('🔍 Starting authentication for:', username);
+            
+            // Ensure systemData is properly initialized
+            if (!systemData || !systemData.users) {
+                console.error('❌ SystemData not initialized properly');
+                console.error('SystemData:', systemData);
+                throw new Error('Sistema no inicializado correctamente');
+            }
+            
+            console.log('📋 Available users:', Object.keys(systemData.users));
+            console.log('📋 SystemData structure:', {
+                hasConfig: !!systemData.config,
+                hasUsers: !!systemData.users,
+                userCount: Object.keys(systemData.users).length
             });
+            
+            const user = systemData.users[username];
+            console.log('👤 User lookup result:', {
+                username: username,
+                userExists: !!user,
+                userData: user ? {
+                    role: user.role,
+                    name: user.name,
+                    hasPassword: !!user.password,
+                    status: user.status
+                } : null
+            });
+            
+            if (!user) {
+                console.log('❌ User not found in systemData');
+                console.log('🔍 Exact available users:', Object.keys(systemData.users));
+                console.log('🔍 Searching for similar usernames...');
+                
+                const similarUsers = Object.keys(systemData.users).filter(u => 
+                    u.toLowerCase().includes(username.toLowerCase()) || 
+                    username.toLowerCase().includes(u.toLowerCase())
+                );
+                
+                if (similarUsers.length > 0) {
+                    console.log('🔍 Similar usernames found:', similarUsers);
+                }
+                
+                throw new Error(`Usuario "${username}" no encontrado`);
+            }
+            
+            console.log('🔐 User data details:', {
+                role: user.role,
+                status: user.status,
+                hasPassword: !!user.password,
+                passwordValue: user.password,
+                name: user.name
+            });
+            
+            console.log('🔑 Password comparison:', {
+                provided: password,
+                providedLength: password.length,
+                stored: user.password,
+                storedLength: user.password ? user.password.length : 0,
+                match: user.password === password,
+                providedType: typeof password,
+                storedType: typeof user.password
+            });
+            
+            // Check password
+            if (!user.password) {
+                console.log('❌ User has no password set');
+                throw new Error('Usuario sin contraseña configurada');
+            }
+            
+            if (user.password !== password) {
+                console.log('❌ Password mismatch');
+                throw new Error('Contraseña incorrecta');
+            }
+            
+            // Check status (super_admin doesn't need active status check)
+            if (user.role !== 'super_admin' && user.status && user.status !== 'active') {
+                console.log('❌ User inactive, status:', user.status);
+                throw new Error('Usuario inactivo');
+            }
+            
+            // Update last login
+            user.lastLogin = new Date().toISOString();
+            
+            const userData = {
+                username: username,
+                role: user.role,
+                name: user.name,
+                ...user
+            };
+            
+            console.log('✅ Authentication successful!');
+            console.log('✅ User role:', userData.role);
+            console.log('✅ User name:', userData.name);
+            
+            return userData;
         }
 
-        // Login form handler
-        elements.loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const username = document.getElementById('usuario').value.trim();
-            const password = document.getElementById('password').value;
-            
-            if (!username || !password) {
-                showError('Por favor, completa todos los campos');
-                return;
-            }
-            
-            showLoading(true);
-            
-            try {
-                const userData = await authenticateUser(username, password);
-                currentUser = userData;
-                
-                console.log('User authenticated:', userData.username, 'Role:', userData.role);
-                
-                // Store session
-                sessionStorage.setItem('currentUser', JSON.stringify(userData));
-                
-                // Update user data in Firebase if connected
-                if (isFirebaseConnected && username !== 'admin') {
-                    try {
-                        await db.collection('users').doc(username).update({
-                            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                    } catch (error) {
-                        console.error('Error updating last login:', error);
-                    }
-                }
-                
-                // Route to appropriate view
-                hideAllViews();
-                
-                console.log('Routing to view for role:', userData.role);
-                
-                switch (userData.role) {
-                    case 'super_admin':
-                        console.log('Loading super admin view...');
-                        loadSuperAdminView();
-                        break;
-                    case 'supervisor':
-                        console.log('Loading supervisor view...');
-                        loadSupervisorView(userData);
-                        break;
-                    case 'asesor':
-                        console.log('Loading asesor view...');
-                        loadAsesorView(userData);
-                        break;
-                    default:
-                        console.error('Unknown role:', userData.role);
-                        showError('Rol de usuario no reconocido: ' + userData.role);
-                        return;
-                }
-                
-            } catch (error) {
-                console.error('Login error:', error);
-                showError(error.message);
-            } finally {
-                showLoading(false);
-            }
-        });
+        // Login form handler - will be set up in initializeApp
 
         // Logout function
         function logout() {
@@ -2957,84 +2937,224 @@
         
         // Initialize application
         async function initializeApp() {
-            console.log('Initializing CNCI Evaluation System...');
+            console.log('🚀 Initializing CNCI Evaluation System...');
             
-            // Initialize DOM elements first
-            initializeElements();
+            // Add a small delay to ensure all scripts are loaded
+            await new Promise(resolve => setTimeout(resolve, 500));
             
-            // Set up login form handler
-            if (elements.loginForm) {
-                // Remove any existing listeners
-                const newForm = elements.loginForm.cloneNode(true);
-                elements.loginForm.parentNode.replaceChild(newForm, elements.loginForm);
-                elements.loginForm = newForm;
+            // Verify systemData is properly loaded
+            console.log('📊 System data loaded:', !!systemData);
+            console.log('📊 System data structure:', {
+                hasConfig: !!systemData.config,
+                hasUsers: !!systemData.users,
+                userCount: systemData.users ? Object.keys(systemData.users).length : 0
+            });
+            
+            // Force re-initialize systemData if it's corrupted
+            if (!systemData || !systemData.users || Object.keys(systemData.users).length === 0) {
+                console.warn('⚠️ SystemData corrupted, reinitializing...');
                 
-                // Add the login handler
-                elements.loginForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    
-                    const username = document.getElementById('usuario').value.trim();
-                    const password = document.getElementById('password').value;
-                    
-                    if (!username || !password) {
-                        showError('Por favor, completa todos los campos');
-                        return;
-                    }
-                    
-                    showLoading(true);
-                    
-                    try {
-                        const userData = await authenticateUser(username, password);
-                        currentUser = userData;
-                        
-                        console.log('User authenticated:', userData.username, 'Role:', userData.role);
-                        
-                        // Store session
-                        sessionStorage.setItem('currentUser', JSON.stringify(userData));
-                        
-                        // Update user data in Firebase if connected
-                        if (isFirebaseConnected && username !== 'admin') {
-                            try {
-                                await db.collection('users').doc(username).update({
-                                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                                });
-                            } catch (error) {
-                                console.error('Error updating last login:', error);
+                // Reinitialize with fresh data
+                window.systemData = {
+                    config: {
+                        loginTitle: "Sistema de Evaluación CNCI",
+                        loginSubtitle: "Ingresa tus credenciales para continuar",
+                        version: "5.0",
+                        lastUpdate: new Date().toISOString(),
+                        modules: MODULES
+                    },
+                    users: {
+                        'admin': {
+                            password: 'admin123',
+                            role: 'super_admin',
+                            name: 'Administrador Principal',
+                            status: 'active',
+                            createdAt: '2024-01-01',
+                            permissions: ['all']
+                        },
+                        'supervisor1': {
+                            password: 'super123',
+                            role: 'supervisor',
+                            name: 'Juan Supervisor',
+                            email: 'supervisor@cnci.com',
+                            status: 'active',
+                            createdAt: '2024-01-10',
+                            lastLogin: null,
+                            permissions: ['manage_asesores', 'edit_titles', 'export_data'],
+                            asesores: {}
+                        },
+                        'maria.garcia': {
+                            password: 'asesor123',
+                            role: 'asesor',
+                            name: 'María García',
+                            email: 'maria.garcia@cnci.com',
+                            phone: '+52 55 1234 5678',
+                            department: 'Atención al Cliente',
+                            supervisor: 'supervisor1',
+                            status: 'active',
+                            createdAt: '2024-01-15',
+                            lastLogin: null,
+                            currentModule: 'M1',
+                            moduleData: {
+                                'M1': {
+                                    categories: [],
+                                    badges: [],
+                                    performance: {}
+                                }
                             }
                         }
-                        
-                        // Route to appropriate view
-                        hideAllViews();
-                        
-                        console.log('Routing to view for role:', userData.role);
-                        
-                        switch (userData.role) {
-                            case 'super_admin':
-                                console.log('Loading super admin view...');
-                                loadSuperAdminView();
-                                break;
-                            case 'supervisor':
-                                console.log('Loading supervisor view...');
-                                loadSupervisorView(userData);
-                                break;
-                            case 'asesor':
-                                console.log('Loading asesor view...');
-                                loadAsesorView(userData);
-                                break;
-                            default:
-                                console.error('Unknown role:', userData.role);
-                                showError('Rol de usuario no reconocido: ' + userData.role);
-                                return;
-                        }
-                        
-                    } catch (error) {
-                        console.error('Login error:', error);
-                        showError(error.message);
-                    } finally {
-                        showLoading(false);
                     }
-                });
+                };
+                
+                // Update global reference
+                systemData = window.systemData;
+                
+                console.log('✅ SystemData reinitialized successfully');
             }
+            
+            console.log('👥 Total users in system:', Object.keys(systemData.users).length);
+            console.log('🔑 Available credentials:');
+            
+            // Log available users for debugging
+            Object.entries(systemData.users).forEach(([username, userData]) => {
+                console.log(`   ✅ ${username}: ${userData.password} (${userData.role})`);
+            });
+            
+            // Wait a bit for DOM to be fully ready
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Initialize DOM elements with error checking
+            elements = {
+                loginForm: document.getElementById('loginForm'),
+                errorMessage: document.getElementById('errorMessage'),
+                errorText: document.getElementById('errorText'),
+                loadingSpinner: document.getElementById('loadingSpinner'),
+                loginButton: document.getElementById('loginButton'),
+                
+                // Views
+                loginView: document.querySelector('body > div:first-child'),
+                superAdminView: document.getElementById('superAdminView'),
+                supervisorView: document.getElementById('supervisorView'),
+                asesorView: document.getElementById('asesorView'),
+                
+                // Tables
+                usersTableBody: document.getElementById('usersTableBody'),
+                asesoresTableBody: document.getElementById('asesoresTableBody'),
+
+                // Firebase status elements
+                firebaseStatus: document.getElementById('firebaseStatus'),
+                statusIcon: document.getElementById('statusIcon'),
+                statusText: document.getElementById('statusText'),
+                adminFirebaseStatus: document.getElementById('adminFirebaseStatus'),
+                adminStatusIcon: document.getElementById('adminStatusIcon'),
+                adminStatusText: document.getElementById('adminStatusText')
+            };
+            
+            console.log('Elements found:', {
+                loginForm: !!elements.loginForm,
+                errorMessage: !!elements.errorMessage,
+                errorText: !!elements.errorText,
+                loadingSpinner: !!elements.loadingSpinner,
+                loginButton: !!elements.loginButton,
+                superAdminView: !!elements.superAdminView,
+                supervisorView: !!elements.supervisorView,
+                asesorView: !!elements.asesorView
+            });
+            
+            // Ensure all critical elements exist
+            if (!elements.loginForm) {
+                console.error('Critical error: Login form not found!');
+                return;
+            }
+            
+            if (!elements.errorMessage || !elements.errorText) {
+                console.error('Critical error: Error message elements not found!');
+                return;
+            }
+            
+            // Set up login form handler
+            elements.loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const usernameInput = document.getElementById('usuario');
+                const passwordInput = document.getElementById('password');
+                
+                if (!usernameInput || !passwordInput) {
+                    console.error('Username or password input not found!');
+                    return;
+                }
+                
+                const username = usernameInput.value.trim();
+                const password = passwordInput.value;
+                
+                console.log('=== LOGIN ATTEMPT ===');
+                console.log('Username:', username);
+                console.log('Password length:', password.length);
+                console.log('Available users:', Object.keys(systemData.users));
+                
+                if (!username || !password) {
+                    showError('Por favor, completa todos los campos');
+                    return;
+                }
+                
+                showLoading(true);
+                
+                try {
+                    console.log('Calling authenticateUser...');
+                    const userData = authenticateUser(username, password);
+                    currentUser = userData;
+                    
+                    console.log('✅ Authentication successful!');
+                    console.log('User data:', userData);
+                    
+                    // Store session
+                    sessionStorage.setItem('currentUser', JSON.stringify(userData));
+                    
+                    // Update user data in Firebase if connected
+                    if (isFirebaseConnected && username !== 'admin') {
+                        try {
+                            await db.collection('users').doc(username).update({
+                                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                        } catch (error) {
+                            console.error('Error updating last login:', error);
+                        }
+                    }
+                    
+                    // Route to appropriate view
+                    console.log('Hiding all views...');
+                    hideAllViews();
+                    
+                    console.log('Routing to view for role:', userData.role);
+                    
+                    switch (userData.role) {
+                        case 'super_admin':
+                            console.log('Loading super admin view...');
+                            loadSuperAdminView();
+                            break;
+                        case 'supervisor':
+                            console.log('Loading supervisor view...');
+                            loadSupervisorView(userData);
+                            break;
+                        case 'asesor':
+                            console.log('Loading asesor view...');
+                            loadAsesorView(userData);
+                            break;
+                        default:
+                            console.error('Unknown role:', userData.role);
+                            showError('Rol de usuario no reconocido: ' + userData.role);
+                            return;
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Login error:', error);
+                    showError(error.message);
+                } finally {
+                    showLoading(false);
+                }
+            });
+            
+            console.log('✅ Login form handler attached successfully');
             
             // Check for existing session
             const savedUser = sessionStorage.getItem('currentUser');
@@ -3044,7 +3164,7 @@
                     
                     // Verify user still exists and is active
                     const userData = systemData.users[currentUser.username];
-                    if (userData && userData.status === 'active') {
+                    if (userData && (userData.status === 'active' || userData.role === 'super_admin')) {
                         hideAllViews();
                         
                         switch (currentUser.role) {
@@ -3075,9 +3195,17 @@
             // Initialize Firebase connection
             await initializeFirebase();
             
-            console.log('Application initialized successfully');
+            console.log('✅ Application initialized successfully');
+            console.log('📋 Available credentials:');
+            console.log('🔑 Super Admin: admin / admin123');
+            console.log('🔑 Supervisor: supervisor1 / super123');
+            console.log('🔑 Asesor: maria.garcia / asesor123');
         }
+
+
 
         // Start application when DOM is loaded
         document.addEventListener('DOMContentLoaded', initializeApp);
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97a1049844af38ef',t:'MTc1NzAyNTkzNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97a11cb6e27738ef',t:'MTc1NzAyNjkyMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
