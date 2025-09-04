@@ -1314,32 +1314,43 @@
             }
         };
 
-        // DOM Elements Cache
-        const elements = {
-            loginForm: document.getElementById('loginForm'),
-            errorMessage: document.getElementById('errorMessage'),
-            errorText: document.getElementById('errorText'),
-            loadingSpinner: document.getElementById('loadingSpinner'),
-            loginButton: document.getElementById('loginButton'),
-            
-            // Views
-            loginView: document.querySelector('body > div:first-child'),
-            superAdminView: document.getElementById('superAdminView'),
-            supervisorView: document.getElementById('supervisorView'),
-            asesorView: document.getElementById('asesorView'),
-            
-            // Tables
-            usersTableBody: document.getElementById('usersTableBody'),
-            asesoresTableBody: document.getElementById('asesoresTableBody'),
+        // DOM Elements Cache - Initialize after DOM is loaded
+        let elements = {};
+        
+        function initializeElements() {
+            elements = {
+                loginForm: document.getElementById('loginForm'),
+                errorMessage: document.getElementById('errorMessage'),
+                errorText: document.getElementById('errorText'),
+                loadingSpinner: document.getElementById('loadingSpinner'),
+                loginButton: document.getElementById('loginButton'),
+                
+                // Views
+                loginView: document.querySelector('body > div:first-child'),
+                superAdminView: document.getElementById('superAdminView'),
+                supervisorView: document.getElementById('supervisorView'),
+                asesorView: document.getElementById('asesorView'),
+                
+                // Tables
+                usersTableBody: document.getElementById('usersTableBody'),
+                asesoresTableBody: document.getElementById('asesoresTableBody'),
 
-            // Firebase status elements
-            firebaseStatus: document.getElementById('firebaseStatus'),
-            statusIcon: document.getElementById('statusIcon'),
-            statusText: document.getElementById('statusText'),
-            adminFirebaseStatus: document.getElementById('adminFirebaseStatus'),
-            adminStatusIcon: document.getElementById('adminStatusIcon'),
-            adminStatusText: document.getElementById('adminStatusText')
-        };
+                // Firebase status elements
+                firebaseStatus: document.getElementById('firebaseStatus'),
+                statusIcon: document.getElementById('statusIcon'),
+                statusText: document.getElementById('statusText'),
+                adminFirebaseStatus: document.getElementById('adminFirebaseStatus'),
+                adminStatusIcon: document.getElementById('adminStatusIcon'),
+                adminStatusText: document.getElementById('adminStatusText')
+            };
+            
+            console.log('Elements initialized:', {
+                loginForm: !!elements.loginForm,
+                superAdminView: !!elements.superAdminView,
+                supervisorView: !!elements.supervisorView,
+                asesorView: !!elements.asesorView
+            });
+        }
 
         /**
          * Firebase Integration Functions
@@ -1686,10 +1697,28 @@
 
         // Hide all views
         function hideAllViews() {
-            elements.loginView.classList.add('hidden');
-            elements.superAdminView.classList.add('hidden');
-            elements.supervisorView.classList.add('hidden');
-            elements.asesorView.classList.add('hidden');
+            console.log('Hiding all views...');
+            
+            // Hide login view (the main container)
+            const loginContainer = document.querySelector('body > div:first-child');
+            if (loginContainer) {
+                loginContainer.classList.add('hidden');
+                console.log('Login view hidden');
+            }
+            
+            // Hide other views
+            if (elements.superAdminView) {
+                elements.superAdminView.classList.add('hidden');
+                console.log('Super admin view hidden');
+            }
+            if (elements.supervisorView) {
+                elements.supervisorView.classList.add('hidden');
+                console.log('Supervisor view hidden');
+            }
+            if (elements.asesorView) {
+                elements.asesorView.classList.add('hidden');
+                console.log('Asesor view hidden');
+            }
         }
 
         // Calculate general score from categories
@@ -1827,6 +1856,8 @@
                 const userData = await authenticateUser(username, password);
                 currentUser = userData;
                 
+                console.log('User authenticated:', userData.username, 'Role:', userData.role);
+                
                 // Store session
                 sessionStorage.setItem('currentUser', JSON.stringify(userData));
                 
@@ -1844,22 +1875,29 @@
                 // Route to appropriate view
                 hideAllViews();
                 
+                console.log('Routing to view for role:', userData.role);
+                
                 switch (userData.role) {
                     case 'super_admin':
+                        console.log('Loading super admin view...');
                         loadSuperAdminView();
                         break;
                     case 'supervisor':
+                        console.log('Loading supervisor view...');
                         loadSupervisorView(userData);
                         break;
                     case 'asesor':
+                        console.log('Loading asesor view...');
                         loadAsesorView(userData);
                         break;
                     default:
-                        showError('Rol de usuario no reconocido');
+                        console.error('Unknown role:', userData.role);
+                        showError('Rol de usuario no reconocido: ' + userData.role);
                         return;
                 }
                 
             } catch (error) {
+                console.error('Login error:', error);
                 showError(error.message);
             } finally {
                 showLoading(false);
@@ -1888,9 +1926,21 @@
         
         // Load super admin view
         function loadSuperAdminView() {
-            elements.superAdminView.classList.remove('hidden');
-            updateSystemStats();
-            loadAllUsers();
+            console.log('Loading super admin view...');
+            
+            if (elements.superAdminView) {
+                elements.superAdminView.classList.remove('hidden');
+                console.log('Super admin view shown');
+                
+                // Load data
+                updateSystemStats();
+                loadAllUsers();
+                
+                console.log('Super admin view loaded successfully');
+            } else {
+                console.error('Super admin view element not found!');
+                showError('Error: No se pudo cargar el panel de administrador');
+            }
         }
 
         // Update system statistics
@@ -2909,6 +2959,83 @@
         async function initializeApp() {
             console.log('Initializing CNCI Evaluation System...');
             
+            // Initialize DOM elements first
+            initializeElements();
+            
+            // Set up login form handler
+            if (elements.loginForm) {
+                // Remove any existing listeners
+                const newForm = elements.loginForm.cloneNode(true);
+                elements.loginForm.parentNode.replaceChild(newForm, elements.loginForm);
+                elements.loginForm = newForm;
+                
+                // Add the login handler
+                elements.loginForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    const username = document.getElementById('usuario').value.trim();
+                    const password = document.getElementById('password').value;
+                    
+                    if (!username || !password) {
+                        showError('Por favor, completa todos los campos');
+                        return;
+                    }
+                    
+                    showLoading(true);
+                    
+                    try {
+                        const userData = await authenticateUser(username, password);
+                        currentUser = userData;
+                        
+                        console.log('User authenticated:', userData.username, 'Role:', userData.role);
+                        
+                        // Store session
+                        sessionStorage.setItem('currentUser', JSON.stringify(userData));
+                        
+                        // Update user data in Firebase if connected
+                        if (isFirebaseConnected && username !== 'admin') {
+                            try {
+                                await db.collection('users').doc(username).update({
+                                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                                });
+                            } catch (error) {
+                                console.error('Error updating last login:', error);
+                            }
+                        }
+                        
+                        // Route to appropriate view
+                        hideAllViews();
+                        
+                        console.log('Routing to view for role:', userData.role);
+                        
+                        switch (userData.role) {
+                            case 'super_admin':
+                                console.log('Loading super admin view...');
+                                loadSuperAdminView();
+                                break;
+                            case 'supervisor':
+                                console.log('Loading supervisor view...');
+                                loadSupervisorView(userData);
+                                break;
+                            case 'asesor':
+                                console.log('Loading asesor view...');
+                                loadAsesorView(userData);
+                                break;
+                            default:
+                                console.error('Unknown role:', userData.role);
+                                showError('Rol de usuario no reconocido: ' + userData.role);
+                                return;
+                        }
+                        
+                    } catch (error) {
+                        console.error('Login error:', error);
+                        showError(error.message);
+                    } finally {
+                        showLoading(false);
+                    }
+                });
+            }
+            
             // Check for existing session
             const savedUser = sessionStorage.getItem('currentUser');
             if (savedUser) {
@@ -2953,4 +3080,4 @@
 
         // Start application when DOM is loaded
         document.addEventListener('DOMContentLoaded', initializeApp);
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97a0f62442a638ef',t:'MTc1NzAyNTM0Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97a1049844af38ef',t:'MTc1NzAyNTkzNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
