@@ -658,7 +658,7 @@
             'M1': {
                 id: 'M1',
                 name: 'Módulo 1',
-                title: 'Fundamentos de Atención al Cliente',
+                title: 'Módulo 1',
                 description: 'Principios básicos de servicio al cliente y comunicación efectiva',
                 categories: [
                     {
@@ -685,7 +685,7 @@
             'M2': {
                 id: 'M2',
                 name: 'Módulo 2',
-                title: 'Técnicas de Ventas',
+                title: 'Módulo 2',
                 description: 'Estrategias y técnicas para el proceso de ventas efectivo',
                 categories: [
                     {
@@ -712,7 +712,7 @@
             'M3': {
                 id: 'M3',
                 name: 'Módulo 3',
-                title: 'Gestión de Relaciones',
+                title: 'Módulo 3',
                 description: 'Construcción y mantenimiento de relaciones con clientes',
                 categories: [
                     {
@@ -729,7 +729,7 @@
             'M4': {
                 id: 'M4',
                 name: 'Módulo 4',
-                title: 'Resolución de Conflictos',
+                title: 'Módulo 4',
                 description: 'Manejo efectivo de situaciones difíciles y quejas',
                 categories: [
                     {
@@ -747,7 +747,7 @@
             'M5': {
                 id: 'M5',
                 name: 'Módulo 5',
-                title: 'Conocimiento del Producto',
+                title: 'Módulo 5',
                 description: 'Dominio completo de productos y servicios ofrecidos',
                 categories: [
                     {
@@ -765,7 +765,7 @@
             'M6': {
                 id: 'M6',
                 name: 'Módulo 6',
-                title: 'Gestión del Tiempo',
+                title: 'Módulo 6',
                 description: 'Optimización del tiempo y productividad en el trabajo',
                 categories: [
                     {
@@ -783,7 +783,7 @@
             'M7': {
                 id: 'M7',
                 name: 'Módulo 7',
-                title: 'Trabajo en Equipo',
+                title: 'Módulo 7',
                 description: 'Colaboración efectiva y sinergia grupal',
                 categories: [
                     {
@@ -801,7 +801,7 @@
             'M8': {
                 id: 'M8',
                 name: 'Módulo 8',
-                title: 'Liderazgo',
+                title: 'Módulo 8',
                 description: 'Desarrollo de habilidades de liderazgo y motivación',
                 categories: [
                     {
@@ -819,7 +819,7 @@
             'M9': {
                 id: 'M9',
                 name: 'Módulo 9',
-                title: 'Innovación y Creatividad',
+                title: 'Módulo 9',
                 description: 'Desarrollo del pensamiento creativo y soluciones innovadoras',
                 categories: [
                     {
@@ -837,7 +837,7 @@
             'M10': {
                 id: 'M10',
                 name: 'Módulo 10',
-                title: 'Ética Profesional',
+                title: 'Módulo 10',
                 description: 'Principios éticos y responsabilidad profesional',
                 categories: [
                     {
@@ -855,7 +855,7 @@
             'M11': {
                 id: 'M11',
                 name: 'Módulo 11',
-                title: 'Tecnología y Herramientas',
+                title: 'Módulo 11',
                 description: 'Dominio de herramientas tecnológicas y sistemas',
                 categories: [
                     {
@@ -873,7 +873,7 @@
             'M12': {
                 id: 'M12',
                 name: 'Módulo 12',
-                title: 'Evaluación Integral',
+                title: 'Módulo 12',
                 description: 'Evaluación comprehensiva de todas las competencias',
                 categories: [
                     {
@@ -1715,7 +1715,7 @@
                 Object.values(MODULES).forEach(module => {
                     const option = document.createElement('option');
                     option.value = module.id;
-                    option.textContent = `${module.name} - ${module.title}`;
+                    option.textContent = module.name;
                     supervisorSelector.appendChild(option);
                 });
                 supervisorSelector.value = currentModule;
@@ -1726,7 +1726,7 @@
                 Object.values(MODULES).forEach(module => {
                     const option = document.createElement('option');
                     option.value = module.id;
-                    option.textContent = `${module.name} - ${module.title}`;
+                    option.textContent = module.name;
                     asesorSelector.appendChild(option);
                 });
                 asesorSelector.value = currentModule;
@@ -1746,7 +1746,7 @@
             }
             
             if (module && currentModuleInfo) {
-                currentModuleInfo.textContent = `Módulo: ${module.name} - ${module.title}`;
+                currentModuleInfo.textContent = `Módulo: ${module.name}`;
             }
         }
 
@@ -3207,5 +3207,5 @@
         // Start application when DOM is loaded
         document.addEventListener('DOMContentLoaded', initializeApp);
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97a11cb6e27738ef',t:'MTc1NzAyNjkyMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97a121c0106338ef',t:'MTc1NzAyNzEyOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
